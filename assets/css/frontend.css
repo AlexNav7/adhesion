@@ -1,0 +1,1271 @@
+/**
+ * Estilos del Frontend para el plugin Adhesión
+ * Archivo: assets/css/frontend.css
+ * Diseño responsive y moderno
+ */
+
+/* ===========================================
+   VARIABLES CSS Y RESET
+   =========================================== */
+:root {
+    --adhesion-primary: #2563eb;
+    --adhesion-primary-dark: #1d4ed8;
+    --adhesion-primary-light: #3b82f6;
+    --adhesion-secondary: #64748b;
+    --adhesion-success: #10b981;
+    --adhesion-warning: #f59e0b;
+    --adhesion-error: #ef4444;
+    --adhesion-info: #06b6d4;
+    
+    --adhesion-border: #e2e8f0;
+    --adhesion-border-light: #f1f5f9;
+    --adhesion-bg-light: #f8fafc;
+    --adhesion-bg-white: #ffffff;
+    --adhesion-bg-dark: #0f172a;
+    
+    --adhesion-text-primary: #1e293b;
+    --adhesion-text-secondary: #64748b;
+    --adhesion-text-muted: #94a3b8;
+    --adhesion-text-light: #cbd5e1;
+    
+    --adhesion-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --adhesion-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --adhesion-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --adhesion-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    --adhesion-radius: 8px;
+    --adhesion-radius-sm: 4px;
+    --adhesion-radius-lg: 12px;
+    --adhesion-radius-xl: 16px;
+    
+    --adhesion-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --adhesion-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --adhesion-spacing-xs: 0.5rem;
+    --adhesion-spacing-sm: 0.75rem;
+    --adhesion-spacing-md: 1rem;
+    --adhesion-spacing-lg: 1.5rem;
+    --adhesion-spacing-xl: 2rem;
+    --adhesion-spacing-2xl: 3rem;
+}
+
+/* Reset y base */
+.adhesion-user-account *,
+.adhesion-user-account *::before,
+.adhesion-user-account *::after {
+    box-sizing: border-box;
+}
+
+.adhesion-user-account {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--adhesion-text-primary);
+    background: var(--adhesion-bg-light);
+    min-height: 100vh;
+    padding: var(--adhesion-spacing-lg);
+}
+
+/* ===========================================
+   CABECERA DEL DASHBOARD
+   =========================================== */
+.adhesion-account-header {
+    background: linear-gradient(135deg, var(--adhesion-primary) 0%, var(--adhesion-primary-dark) 100%);
+    color: white;
+    padding: var(--adhesion-spacing-2xl) var(--adhesion-spacing-xl);
+    border-radius: var(--adhesion-radius-lg);
+    margin-bottom: var(--adhesion-spacing-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--adhesion-shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.adhesion-account-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.user-welcome h1 {
+    margin: 0 0 var(--adhesion-spacing-sm) 0;
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-info {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+.account-actions {
+    display: flex;
+    gap: var(--adhesion-spacing-md);
+}
+
+.account-actions .button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: var(--adhesion-spacing-sm) var(--adhesion-spacing-lg);
+    border-radius: var(--adhesion-radius);
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--adhesion-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--adhesion-spacing-sm);
+    backdrop-filter: blur(10px);
+}
+
+.account-actions .button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.account-actions .button-primary {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--adhesion-primary);
+    border-color: transparent;
+}
+
+.account-actions .button-primary:hover {
+    background: white;
+    color: var(--adhesion-primary-dark);
+}
+
+/* ===========================================
+   TARJETAS DE ESTADÍSTICAS
+   =========================================== */
+.adhesion-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--adhesion-spacing-lg);
+    margin-bottom: var(--adhesion-spacing-2xl);
+}
+
+.stat-card {
+    background: var(--adhesion-bg-white);
+    border-radius: var(--adhesion-radius-lg);
+    padding: var(--adhesion-spacing-xl);
+    box-shadow: var(--adhesion-shadow);
+    border: 1px solid var(--adhesion-border);
+    transition: var(--adhesion-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--adhesion-primary);
+    transition: var(--adhesion-transition);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--adhesion-shadow-lg);
+}
+
+.stat-card:hover::before {
+    height: 6px;
+}
+
+.stat-card.pending::before {
+    background: var(--adhesion-warning);
+}
+
+.stat-card.success::before {
+    background: var(--adhesion-success);
+}
+
+.stat-card.error::before {
+    background: var(--adhesion-error);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--adhesion-bg-light);
+    border-radius: var(--adhesion-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--adhesion-spacing-lg);
+    color: var(--adhesion-primary);
+    font-size: 1.5rem;
+    position: relative;
+}
+
+.stat-card.pending .stat-icon {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--adhesion-warning);
+}
+
+.stat-card.success .stat-icon {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--adhesion-success);
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--adhesion-spacing-xs);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--adhesion-text-primary);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--adhesion-text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ===========================================
+   SISTEMA DE PESTAÑAS
+   =========================================== */
+.adhesion-account-tabs {
+    background: var(--adhesion-bg-white);
+    border-radius: var(--adhesion-radius-lg);
+    box-shadow: var(--adhesion-shadow);
+    overflow: hidden;
+    border: 1px solid var(--adhesion-border);
+}
+
+.tab-navigation {
+    display: flex;
+    background: var(--adhesion-bg-light);
+    border-bottom: 1px solid var(--adhesion-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.tab-navigation::-webkit-scrollbar {
+    display: none;
+}
+
+.tab-button {
+    flex: 1;
+    min-width: 160px;
+    padding: var(--adhesion-spacing-lg) var(--adhesion-spacing-xl);
+    border: none;
+    background: transparent;
+    color: var(--adhesion-text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--adhesion-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--adhesion-spacing-sm);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+}
+
+.tab-button:hover {
+    background: rgba(37, 99, 235, 0.05);
+    color: var(--adhesion-primary);
+}
+
+.tab-button.active {
+    background: var(--adhesion-bg-white);
+    color: var(--adhesion-primary);
+    border-bottom-color: var(--adhesion-primary);
+}
+
+.tab-button .dashicons {
+    font-size: 1.1rem;
+}
+
+.tab-content {
+    display: none;
+    padding: var(--adhesion-spacing-2xl);
+    min-height: 500px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--adhesion-spacing-xl);
+    padding-bottom: var(--adhesion-spacing-lg);
+    border-bottom: 1px solid var(--adhesion-border);
+}
+
+.tab-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+}
+
+/* ===========================================
+   GRID Y TARJETAS DE CONTENIDO
+   =========================================== */
+.adhesion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--adhesion-spacing-xl);
+}
+
+.adhesion-card {
+    background: var(--adhesion-bg-white);
+    border-radius: var(--adhesion-radius-lg);
+    border: 1px solid var(--adhesion-border);
+    overflow: hidden;
+    transition: var(--adhesion-transition);
+}
+
+.adhesion-card:hover {
+    box-shadow: var(--adhesion-shadow-md);
+}
+
+.card-header {
+    padding: var(--adhesion-spacing-lg) var(--adhesion-spacing-xl);
+    background: var(--adhesion-bg-light);
+    border-bottom: 1px solid var(--adhesion-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+}
+
+.view-all {
+    color: var(--adhesion-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--adhesion-transition);
+}
+
+.view-all:hover {
+    color: var(--adhesion-primary-dark);
+    text-decoration: underline;
+}
+
+.card-content {
+    padding: var(--adhesion-spacing-xl);
+}
+
+/* ===========================================
+   LISTAS DE ELEMENTOS
+   =========================================== */
+.calculations-list,
+.contracts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--adhesion-spacing-lg);
+}
+
+.calculation-item,
+.contract-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--adhesion-spacing-lg);
+    background: var(--adhesion-bg-light);
+    border-radius: var(--adhesion-radius);
+    transition: var(--adhesion-transition);
+    border: 1px solid transparent;
+}
+
+.calculation-item:hover,
+.contract-item:hover {
+    background: white;
+    border-color: var(--adhesion-border);
+    box-shadow: var(--adhesion-shadow-sm);
+}
+
+.calc-info,
+.contract-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--adhesion-spacing-xs);
+}
+
+.calc-info strong,
+.contract-info strong {
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+    font-size: 1rem;
+}
+
+.calc-details,
+.contract-status {
+    font-size: 0.875rem;
+    color: var(--adhesion-text-secondary);
+}
+
+.calc-date,
+.contract-date {
+    font-size: 0.75rem;
+    color: var(--adhesion-text-muted);
+}
+
+.calc-actions,
+.contract-actions {
+    display: flex;
+    gap: var(--adhesion-spacing-sm);
+    flex-shrink: 0;
+}
+
+/* Estados de contratos */
+.contract-status {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--adhesion-spacing-xs) var(--adhesion-spacing-sm);
+    border-radius: var(--adhesion-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--adhesion-warning);
+}
+
+.status-signed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--adhesion-success);
+}
+
+.status-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--adhesion-error);
+}
+
+.status-calculated {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--adhesion-info);
+}
+
+.status-contracted {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--adhesion-success);
+}
+
+/* ===========================================
+   TABLAS
+   =========================================== */
+.calculations-table-container,
+.contracts-table-container {
+    overflow-x: auto;
+    border-radius: var(--adhesion-radius);
+    border: 1px solid var(--adhesion-border);
+}
+
+.adhesion-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--adhesion-bg-white);
+    font-size: 0.875rem;
+}
+
+.adhesion-table thead {
+    background: var(--adhesion-bg-light);
+}
+
+.adhesion-table th,
+.adhesion-table td {
+    padding: var(--adhesion-spacing-lg);
+    text-align: left;
+    border-bottom: 1px solid var(--adhesion-border);
+}
+
+.adhesion-table th {
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.adhesion-table tbody tr {
+    transition: var(--adhesion-transition);
+}
+
+.adhesion-table tbody tr:hover {
+    background: var(--adhesion-bg-light);
+}
+
+.adhesion-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--adhesion-spacing-xs) var(--adhesion-spacing-sm);
+    border-radius: var(--adhesion-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.no-data {
+    text-align: center;
+    color: var(--adhesion-text-muted);
+    font-style: italic;
+    padding: var(--adhesion-spacing-2xl);
+}
+
+/* ===========================================
+   FORMULARIOS
+   =========================================== */
+.adhesion-form {
+    max-width: 800px;
+}
+
+.form-section {
+    margin-bottom: var(--adhesion-spacing-2xl);
+    padding: var(--adhesion-spacing-xl);
+    background: var(--adhesion-bg-light);
+    border-radius: var(--adhesion-radius-lg);
+    border: 1px solid var(--adhesion-border);
+}
+
+.form-section h3 {
+    margin: 0 0 var(--adhesion-spacing-lg) 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+    padding-bottom: var(--adhesion-spacing-sm);
+    border-bottom: 1px solid var(--adhesion-border);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--adhesion-spacing-lg);
+    margin-bottom: var(--adhesion-spacing-lg);
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    margin-bottom: var(--adhesion-spacing-sm);
+    font-weight: 500;
+    color: var(--adhesion-text-primary);
+    font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: var(--adhesion-spacing-sm) var(--adhesion-spacing-md);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius);
+    font-size: 0.875rem;
+    transition: var(--adhesion-transition);
+    background: var(--adhesion-bg-white);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--adhesion-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.description {
+    font-size: 0.75rem;
+    color: var(--adhesion-text-muted);
+    margin-bottom: var(--adhesion-spacing-lg);
+    line-height: 1.5;
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--adhesion-spacing-md);
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: var(--adhesion-spacing-lg);
+    border-top: 1px solid var(--adhesion-border);
+}
+
+/* ===========================================
+   BOTONES
+   =========================================== */
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--adhesion-spacing-sm);
+    padding: var(--adhesion-spacing-sm) var(--adhesion-spacing-lg);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius);
+    background: var(--adhesion-bg-white);
+    color: var(--adhesion-text-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--adhesion-transition);
+    white-space: nowrap;
+}
+
+.button:hover {
+    background: var(--adhesion-bg-light);
+    border-color: var(--adhesion-text-secondary);
+    text-decoration: none;
+}
+
+.button-primary {
+    background: var(--adhesion-primary);
+    border-color: var(--adhesion-primary);
+    color: white;
+}
+
+.button-primary:hover {
+    background: var(--adhesion-primary-dark);
+    border-color: var(--adhesion-primary-dark);
+    color: white;
+}
+
+.button-small {
+    padding: var(--adhesion-spacing-xs) var(--adhesion-spacing-sm);
+    font-size: 0.75rem;
+}
+
+.button-large {
+    padding: var(--adhesion-spacing-lg) var(--adhesion-spacing-xl);
+    font-size: 1rem;
+}
+
+/* ===========================================
+   MODALES
+   =========================================== */
+.adhesion-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--adhesion-transition);
+}
+
+.adhesion-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--adhesion-bg-white);
+    border-radius: var(--adhesion-radius-lg);
+    box-shadow: var(--adhesion-shadow-lg);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    transform: scale(0.95) translateY(20px);
+    transition: var(--adhesion-transition);
+}
+
+.adhesion-modal.active .modal-content {
+    transform: scale(1) translateY(0);
+}
+
+.modal-header {
+    padding: var(--adhesion-spacing-xl);
+    background: var(--adhesion-bg-light);
+    border-bottom: 1px solid var(--adhesion-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--adhesion-text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--adhesion-radius);
+    transition: var(--adhesion-transition);
+}
+
+.modal-close:hover {
+    background: var(--adhesion-border);
+    color: var(--adhesion-text-primary);
+}
+
+.modal-body {
+    padding: var(--adhesion-spacing-xl);
+    overflow-y: auto;
+    max-height: calc(80vh - 120px);
+}
+
+/* ===========================================
+   MENSAJES Y ALERTAS
+   =========================================== */
+.adhesion-message {
+    padding: var(--adhesion-spacing-lg);
+    border-radius: var(--adhesion-radius);
+    margin-bottom: var(--adhesion-spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--adhesion-spacing-sm);
+}
+
+.adhesion-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #065f46;
+}
+
+.adhesion-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #991b1b;
+}
+
+.adhesion-message.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #92400e;
+}
+
+.adhesion-message.info {
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    color: #155e75;
+}
+
+/* ===========================================
+   LOADING STATES
+   =========================================== */
+.adhesion-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--adhesion-spacing-sm);
+    color: var(--adhesion-text-secondary);
+}
+
+.adhesion-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--adhesion-border);
+    border-top: 2px solid var(--adhesion-primary);
+    border-radius: 50%;
+    animation: adhesion-spin 1s linear infinite;
+}
+
+@keyframes adhesion-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===========================================
+   RESPONSIVE DESIGN
+   =========================================== */
+@media (max-width: 768px) {
+    .adhesion-user-account {
+        padding: var(--adhesion-spacing-md);
+    }
+    
+    .adhesion-account-header {
+        flex-direction: column;
+        gap: var(--adhesion-spacing-lg);
+        text-align: center;
+        padding: var(--adhesion-spacing-xl);
+    }
+    
+    .user-welcome h1 {
+        font-size: 1.5rem;
+    }
+    
+    .adhesion-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--adhesion-spacing-md);
+    }
+    
+    .stat-card {
+        padding: var(--adhesion-spacing-lg);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+    
+    .tab-navigation {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        min-width: 120px;
+        padding: var(--adhesion-spacing-md);
+        font-size: 0.875rem;
+    }
+    
+    .tab-content {
+        padding: var(--adhesion-spacing-lg);
+    }
+    
+    .adhesion-grid {
+        grid-template-columns: 1fr;
+        gap: var(--adhesion-spacing-lg);
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: var(--adhesion-spacing-md);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-actions .button {
+        justify-content: center;
+    }
+    
+    .calculation-item,
+    .contract-item {
+        flex-direction: column;
+        gap: var(--adhesion-spacing-md);
+        align-items: stretch;
+    }
+    
+    .calc-actions,
+    .contract-actions {
+        justify-content: center;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: var(--adhesion-spacing-md);
+    }
+    
+    .modal-header,
+    .modal-body {
+        padding: var(--adhesion-spacing-lg);
+    }
+    
+    .calculations-table-container,
+    .contracts-table-container {
+        font-size: 0.75rem;
+    }
+    
+    .adhesion-table th,
+    .adhesion-table td {
+        padding: var(--adhesion-spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .adhesion-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tab-button {
+        min-width: 100px;
+        padding: var(--adhesion-spacing-sm);
+        font-size: 0.75rem;
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+    }
+    
+    .user-welcome h1 {
+        font-size: 1.25rem;
+    }
+    
+    .account-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .account-actions .button {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* ===========================================
+   CALCULADORA ESPECÍFICOS
+   =========================================== */
+.adhesion-calculator {
+    background: var(--adhesion-bg-white);
+    border-radius: var(--adhesion-radius-lg);
+    box-shadow: var(--adhesion-shadow);
+    border: 1px solid var(--adhesion-border);
+    overflow: hidden;
+}
+
+.calculator-header {
+    background: linear-gradient(135deg, var(--adhesion-primary) 0%, var(--adhesion-primary-dark) 100%);
+    color: white;
+    padding: var(--adhesion-spacing-xl);
+    text-align: center;
+}
+
+.calculator-header h2 {
+    margin: 0 0 var(--adhesion-spacing-sm) 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.calculator-header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.calculator-body {
+    padding: var(--adhesion-spacing-2xl);
+}
+
+.calculator-form {
+    display: grid;
+    gap: var(--adhesion-spacing-xl);
+}
+
+.calculator-section {
+    background: var(--adhesion-bg-light);
+    padding: var(--adhesion-spacing-xl);
+    border-radius: var(--adhesion-radius);
+    border: 1px solid var(--adhesion-border);
+}
+
+.calculator-section h3 {
+    margin: 0 0 var(--adhesion-spacing-lg) 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+}
+
+.calculator-result {
+    background: var(--adhesion-bg-white);
+    border: 2px solid var(--adhesion-success);
+    border-radius: var(--adhesion-radius-lg);
+    padding: var(--adhesion-spacing-xl);
+    text-align: center;
+    margin-top: var(--adhesion-spacing-xl);
+}
+
+.result-price {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--adhesion-success);
+    margin: 0;
+}
+
+.result-details {
+    color: var(--adhesion-text-secondary);
+    margin: var(--adhesion-spacing-sm) 0 0 0;
+}
+
+/* ===========================================
+   PAYMENT ESPECÍFICOS
+   =========================================== */
+.adhesion-payment {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.payment-summary {
+    background: var(--adhesion-bg-light);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius-lg);
+    padding: var(--adhesion-spacing-xl);
+    margin-bottom: var(--adhesion-spacing-xl);
+}
+
+.payment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--adhesion-spacing-sm) 0;
+    border-bottom: 1px solid var(--adhesion-border);
+}
+
+.payment-item:last-child {
+    border-bottom: none;
+    font-weight: 600;
+    font-size: 1.125rem;
+    padding-top: var(--adhesion-spacing-md);
+    margin-top: var(--adhesion-spacing-md);
+    border-top: 2px solid var(--adhesion-border);
+}
+
+.payment-form {
+    background: var(--adhesion-bg-white);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius-lg);
+    padding: var(--adhesion-spacing-xl);
+}
+
+.payment-methods {
+    display: grid;
+    gap: var(--adhesion-spacing-md);
+    margin-bottom: var(--adhesion-spacing-xl);
+}
+
+.payment-method {
+    display: flex;
+    align-items: center;
+    gap: var(--adhesion-spacing-md);
+    padding: var(--adhesion-spacing-lg);
+    border: 2px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius);
+    cursor: pointer;
+    transition: var(--adhesion-transition);
+}
+
+.payment-method:hover {
+    border-color: var(--adhesion-primary);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.payment-method.selected {
+    border-color: var(--adhesion-primary);
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.payment-method input[type="radio"] {
+    margin: 0;
+}
+
+.payment-method-info {
+    flex: 1;
+}
+
+.payment-method-name {
+    font-weight: 600;
+    color: var(--adhesion-text-primary);
+    margin-bottom: var(--adhesion-spacing-xs);
+}
+
+.payment-method-desc {
+    font-size: 0.875rem;
+    color: var(--adhesion-text-secondary);
+}
+
+/* ===========================================
+   CONTRACT SIGNING ESPECÍFICOS
+   =========================================== */
+.contract-preview {
+    background: var(--adhesion-bg-white);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius);
+    max-height: 400px;
+    overflow-y: auto;
+    padding: var(--adhesion-spacing-xl);
+    margin: var(--adhesion-spacing-xl) 0;
+    font-family: 'Times New Roman', serif;
+    line-height: 1.6;
+}
+
+.contract-actions {
+    display: flex;
+    gap: var(--adhesion-spacing-md);
+    justify-content: center;
+    padding: var(--adhesion-spacing-xl);
+    background: var(--adhesion-bg-light);
+    border-top: 1px solid var(--adhesion-border);
+}
+
+.signature-section {
+    background: var(--adhesion-bg-light);
+    border: 1px solid var(--adhesion-border);
+    border-radius: var(--adhesion-radius-lg);
+    padding: var(--adhesion-spacing-xl);
+    text-align: center;
+    margin: var(--adhesion-spacing-xl) 0;
+}
+
+.signature-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--adhesion-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--adhesion-spacing-lg);
+    color: white;
+    font-size: 2rem;
+}
+
+/* ===========================================
+   ANIMACIONES Y EFECTOS
+   =========================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.pulse-effect {
+    animation: pulse 2s infinite;
+}
+
+/* ===========================================
+   UTILIDADES
+   =========================================== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: var(--adhesion-spacing-xs); }
+.mt-2 { margin-top: var(--adhesion-spacing-sm); }
+.mt-3 { margin-top: var(--adhesion-spacing-md); }
+.mt-4 { margin-top: var(--adhesion-spacing-lg); }
+.mt-5 { margin-top: var(--adhesion-spacing-xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--adhesion-spacing-xs); }
+.mb-2 { margin-bottom: var(--adhesion-spacing-sm); }
+.mb-3 { margin-bottom: var(--adhesion-spacing-md); }
+.mb-4 { margin-bottom: var(--adhesion-spacing-lg); }
+.mb-5 { margin-bottom: var(--adhesion-spacing-xl); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--adhesion-spacing-xs); }
+.p-2 { padding: var(--adhesion-spacing-sm); }
+.p-3 { padding: var(--adhesion-spacing-md); }
+.p-4 { padding: var(--adhesion-spacing-lg); }
+.p-5 { padding: var(--adhesion-spacing-xl); }
+
+.hidden { display: none; }
+.block { display: block; }
+.flex { display: flex; }
+.grid { display: grid; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.rounded { border-radius: var(--adhesion-radius); }
+.rounded-lg { border-radius: var(--adhesion-radius-lg); }
+
+.shadow { box-shadow: var(--adhesion-shadow); }
+.shadow-md { box-shadow: var(--adhesion-shadow-md); }
+.shadow-lg { box-shadow: var(--adhesion-shadow-lg); }
+
+/* ===========================================
+   TEMA OSCURO (OPCIONAL)
+   =========================================== */
+@media (prefers-color-scheme: dark) {
+    .adhesion-user-account.dark-mode {
+        --adhesion-bg-light: #1e293b;
+        --adhesion-bg-white: #0f172a;
+        --adhesion-bg-dark: #020617;
+        
+        --adhesion-text-primary: #f8fafc;
+        --adhesion-text-secondary: #cbd5e1;
+        --adhesion-text-muted: #64748b;
+        
+        --adhesion-border: #334155;
+        --adhesion-border-light: #1e293b;
+        
+        --adhesion-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+        --adhesion-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        --adhesion-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+}
