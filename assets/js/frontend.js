@@ -20,6 +20,7 @@
         initForms();
         initButtons();
         initCalculatorButtons();
+        initLoginRegisterForms();
         initContractButtons();
         initProfileForm();
         initDataTables();
@@ -1135,6 +1136,363 @@
     // Inyectar estilos adicionales
     if (!$('#adhesion-dynamic-styles').length) {
         $('<style id="adhesion-dynamic-styles">' + additionalCSS + '</style>').appendTo('head');
+    }
+
+
+    /**
+     * ================================
+     * FUNCIONES LOGIN/REGISTRO
+     * ================================
+     */
+
+    /**
+     * Inicializar formularios de login y registro
+     */
+    function initLoginRegisterForms() {
+        // Botón para mostrar formulario de registro
+        $(document).on('click', '#show-register-form', function(e) {
+            e.preventDefault();
+            showRegisterForm();
+        });
+        
+        // Función global para mostrar registro (llamada desde PHP)
+        window.showRegisterForm = showRegisterForm;
+        
+        // Botón para mostrar formulario de login
+        $(document).on('click', '#show-login-form', function(e) {
+            e.preventDefault();
+            showLoginForm();
+        });
+        
+        // Función global para mostrar login (llamada desde PHP)
+        window.showLoginForm = showLoginForm;
+        
+        // Procesar formulario de login
+        $(document).on('submit', '#adhesion-login-form', function(e) {
+            e.preventDefault();
+            processLoginForm($(this));
+        });
+        
+        // Procesar formulario de registro
+        $(document).on('submit', '#adhesion-register-form', function(e) {
+            e.preventDefault();
+            processRegisterForm($(this));
+        });
+    }
+
+    /**
+     * Mostrar formulario de registro
+     */
+    function showRegisterForm() {
+        // Si ya existe el formulario de registro, solo mostrarlo
+        if ($('.adhesion-register-form').length > 0) {
+            $('.adhesion-login-form').hide();
+            $('.adhesion-register-form').show();
+            return;
+        }
+        
+        // Si no existe, cargarlo vía AJAX
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'adhesion_get_register_form',
+                nonce: adhesion_ajax.nonce
+            },
+            beforeSend: function() {
+                showLoading('Cargando formulario de registro...');
+            },
+            success: function(response) {
+                hideLoading();
+                
+                if (response.success) {
+                    // Ocultar login y mostrar registro
+                    $('.adhesion-login-form').hide();
+                    $('.adhesion-login-form').after(response.data.html);
+                    
+                    // Inicializar eventos del nuevo formulario
+                    initRegisterFormEvents();
+                } else {
+                    showMessage('error', response.data || 'Error al cargar el formulario de registro');
+                }
+            },
+            error: function() {
+                hideLoading();
+                showMessage('error', 'Error de conexión al cargar el formulario');
+            }
+        });
+    }
+
+    /**
+     * Mostrar formulario de login
+     */
+    function showLoginForm() {
+        $('.adhesion-register-form').hide();
+        $('.adhesion-login-form').show();
+    }
+
+    /**
+     * Procesar formulario de login
+     */
+    function processLoginForm($form) {
+        if (isProcessing) return;
+        
+        // Validar campos requeridos
+        if (!validateForm($form)) {
+            return;
+        }
+        
+        isProcessing = true;
+        
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: $form.serialize(),
+            beforeSend: function() {
+                $form.find('button[type="submit"]').prop('disabled', true).text('Iniciando sesión...');
+                clearFormMessages($form);
+            },
+            success: function(response) {
+                if (response.success) {
+                    showFormMessage($form, 'success', response.data.message);
+                    
+                    // Redireccionar después de un breve delay
+                    setTimeout(function() {
+                        window.location.href = response.data.redirect_to || window.location.href;
+                    }, 1500);
+                } else {
+                    showFormMessage($form, 'error', response.data || 'Error en el login');
+                    $form.find('button[type="submit"]').prop('disabled', false).text('Iniciar Sesión');
+                }
+            },
+            error: function() {
+                showFormMessage($form, 'error', 'Error de conexión. Por favor, inténtalo de nuevo.');
+                $form.find('button[type="submit"]').prop('disabled', false).text('Iniciar Sesión');
+            },
+            complete: function() {
+                isProcessing = false;
+            }
+        });
+    }
+
+    /**
+     * Procesar formulario de registro
+     */
+    function processRegisterForm($form) {
+        if (isProcessing) return;
+        
+        // Validar campos requeridos
+        if (!validateForm($form)) {
+            return;
+        }
+        
+        // Validar contraseñas
+        const password = $form.find('[name="user_password"]').val();
+        const confirmPassword = $form.find('[name="confirm_password"]').val();
+        
+        if (password !== confirmPassword) {
+            showFormMessage($form, 'error', 'Las contraseñas no coinciden');
+            return;
+        }
+        
+        if (password.length < 6) {
+            showFormMessage($form, 'error', 'La contraseña debe tener al menos 6 caracteres');
+            return;
+        }
+        
+        // Verificar términos y condiciones
+        if (!$form.find('[name="accept_terms"]').is(':checked')) {
+            showFormMessage($form, 'error', 'Debes aceptar los términos y condiciones');
+            return;
+        }
+        
+        isProcessing = true;
+        
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: $form.serialize(),
+            beforeSend: function() {
+                $form.find('button[type="submit"]').prop('disabled', true).text('Creando cuenta...');
+                clearFormMessages($form);
+            },
+            success: function(response) {
+                if (response.success) {
+                    showFormMessage($form, 'success', response.data.message);
+                    
+                    // Redireccionar después de un breve delay
+                    setTimeout(function() {
+                        window.location.href = response.data.redirect_to || window.location.href;
+                    }, 1500);
+                } else {
+                    showFormMessage($form, 'error', response.data || 'Error en el registro');
+                    $form.find('button[type="submit"]').prop('disabled', false).text('Crear Cuenta');
+                }
+            },
+            error: function() {
+                showFormMessage($form, 'error', 'Error de conexión. Por favor, inténtalo de nuevo.');
+                $form.find('button[type="submit"]').prop('disabled', false).text('Crear Cuenta');
+            },
+            complete: function() {
+                isProcessing = false;
+            }
+        });
+    }
+
+    /**
+     * Inicializar eventos específicos del formulario de registro
+     */
+    function initRegisterFormEvents() {
+        const $registerForm = $('#adhesion-register-form');
+        
+        // Validación en tiempo real del CIF
+        $registerForm.find('[name="user_cif"]').on('blur', function() {
+            const cif = $(this).val().trim();
+            if (cif) {
+                validateCIF(cif, $(this));
+            }
+        });
+        
+        // Validación de contraseñas en tiempo real
+        $registerForm.find('[name="user_password"], [name="confirm_password"]').on('input', function() {
+            validatePasswordMatch($registerForm);
+        });
+        
+        // Validación de email
+        $registerForm.find('[name="user_email"]').on('blur', function() {
+            const email = $(this).val().trim();
+            if (email && isValidEmail(email)) {
+                checkEmailExists(email, $(this));
+            }
+        });
+    }
+
+    /**
+     * Validar formato de CIF
+     */
+    function validateCIF(cif, $field) {
+        // Validación básica de formato CIF español
+        const cifRegex = /^[ABCDEFGHJNPQRSUVW]\d{8}$/;
+        
+        if (!cifRegex.test(cif.toUpperCase())) {
+            showFieldError($field, 'Formato de CIF no válido');
+            return false;
+        }
+        
+        // Verificar si el CIF ya existe
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'adhesion_check_cif_exists',
+                cif: cif,
+                nonce: adhesion_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.exists) {
+                        showFieldError($field, 'Este CIF ya está registrado');
+                    } else {
+                        clearFieldError($field);
+                    }
+                }
+            }
+        });
+        
+        return true;
+    }
+
+    /**
+     * Validar coincidencia de contraseñas
+     */
+    function validatePasswordMatch($form) {
+        const password = $form.find('[name="user_password"]').val();
+        const confirmPassword = $form.find('[name="confirm_password"]').val();
+        const $confirmField = $form.find('[name="confirm_password"]');
+        
+        if (confirmPassword && password !== confirmPassword) {
+            showFieldError($confirmField, 'Las contraseñas no coinciden');
+            return false;
+        } else if (confirmPassword && password === confirmPassword) {
+            clearFieldError($confirmField);
+            return true;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Verificar si email existe
+     */
+    function checkEmailExists(email, $field) {
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'adhesion_check_email_exists',
+                email: email,
+                nonce: adhesion_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.exists) {
+                        showFieldError($field, 'Este email ya está registrado');
+                    } else {
+                        clearFieldError($field);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Mostrar mensaje en formulario específico
+     */
+    function showFormMessage($form, type, message) {
+        const $messagesContainer = $form.find('.adhesion-form-messages');
+        
+        if ($messagesContainer.length === 0) {
+            $form.append('<div class="adhesion-form-messages"></div>');
+        }
+        
+        const icon = type === 'success' ? 'yes-alt' : 'warning';
+        const messageHtml = `
+            <div class="adhesion-form-message ${type}">
+                <span class="dashicons dashicons-${icon}"></span>
+                ${escapeHtml(message)}
+            </div>
+        `;
+        
+        $form.find('.adhesion-form-messages').html(messageHtml);
+        
+        // Scroll al mensaje
+        $('html, body').animate({
+            scrollTop: $form.find('.adhesion-form-messages').offset().top - 20
+        }, 300);
+    }
+
+    /**
+     * Limpiar mensajes del formulario
+     */
+    function clearFormMessages($form) {
+        $form.find('.adhesion-form-messages').empty();
+    }
+
+    /**
+     * Mostrar error en campo específico
+     */
+    function showFieldError($field, message) {
+        clearFieldError($field);
+        $field.addClass('error');
+        $field.after(`<div class="field-error">${escapeHtml(message)}</div>`);
+    }
+
+    /**
+     * Limpiar error de campo específico
+     */
+    function clearFieldError($field) {
+        $field.removeClass('error');
+        $field.next('.field-error').remove();
     }
 
 })(jQuery);
