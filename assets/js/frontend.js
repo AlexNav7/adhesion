@@ -4,7 +4,7 @@
  * Maneja toda la interactividad del dashboard y formularios
  */
 
-(function($) {
+(function($) { 
     'use strict';
 
     // Variables globales
@@ -1181,46 +1181,14 @@
     }
 
     /**
-     * Mostrar formulario de registro
+     * Mostrar formulario de registro (versión simplificada)
      */
     function showRegisterForm() {
-        // Si ya existe el formulario de registro, solo mostrarlo
-        if ($('.adhesion-register-form').length > 0) {
-            $('.adhesion-login-form').hide();
-            $('.adhesion-register-form').show();
-            return;
-        }
-        
-        // Si no existe, cargarlo vía AJAX
-        $.ajax({
-            url: adhesion_ajax.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'adhesion_get_register_form',
-                nonce: adhesion_ajax.nonce
-            },
-            beforeSend: function() {
-                showLoading('Cargando formulario de registro...');
-            },
-            success: function(response) {
-                hideLoading();
-                
-                if (response.success) {
-                    // Ocultar login y mostrar registro
-                    $('.adhesion-login-form').hide();
-                    $('.adhesion-login-form').after(response.data.html);
-                    
-                    // Inicializar eventos del nuevo formulario
-                    initRegisterFormEvents();
-                } else {
-                    showMessage('error', response.data || 'Error al cargar el formulario de registro');
-                }
-            },
-            error: function() {
-                hideLoading();
-                showMessage('error', 'Error de conexión al cargar el formulario');
-            }
-        });
+        window.location.href = '/registro/';
+    }
+
+    function showLoginForm() {
+        window.location.href = '/mi-cuenta-adhesion/';
     }
 
     /**

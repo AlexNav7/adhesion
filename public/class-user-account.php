@@ -106,9 +106,9 @@ class Adhesion_User_Account {
     public function login_shortcode($atts = array()) {
         if (is_user_logged_in()) {
             return '<div class="adhesion-message info">' . 
-                   __('Ya estás conectado.', 'adhesion') . 
-                   ' <a href="' . wp_logout_url(get_permalink()) . '">' . __('Cerrar sesión', 'adhesion') . '</a>' .
-                   '</div>';
+                __('Ya estás conectado.', 'adhesion') . 
+                ' <a href="' . wp_logout_url(get_permalink()) . '">' . __('Cerrar sesión', 'adhesion') . '</a>' .
+                '</div>';
         }
         
         $atts = shortcode_atts(array(
@@ -119,6 +119,17 @@ class Adhesion_User_Account {
         ob_start();
         ?>
         <div class="adhesion-login-form">
+            
+            <?php if ($atts['show_register_link'] === 'yes') : ?>
+                <div class="adhesion-form-header">
+                    <p><?php _e('¿No tienes cuenta?', 'adhesion'); ?> 
+                    <a href="<?php echo home_url('/registro/'); ?>">
+                        <?php _e('Crear cuenta', 'adhesion'); ?>
+                    </a>
+                    </p>
+                </div>
+            <?php endif; ?>
+            
             <form id="adhesion-login-form" class="adhesion-form">
                 <?php wp_nonce_field('adhesion_user_login', 'adhesion_login_nonce'); ?>
                 
@@ -126,9 +137,9 @@ class Adhesion_User_Account {
                     <h3><?php _e('Iniciar Sesión', 'adhesion'); ?></h3>
                     
                     <div class="form-group">
-                        <label for="user_login"><?php _e('CIF', 'adhesion'); ?></label>
-                        <input type="text" id="user_login" name="user_login" required 
-                               placeholder="<?php _e('Introduzca su CIF', 'adhesion'); ?>">
+                        <label for="user_login"><?php _e('Email', 'adhesion'); ?></label>
+                        <input type="email" id="user_login" name="user_login" required 
+                            placeholder="<?php _e('Introduzca su email', 'adhesion'); ?>">
                     </div>
                     
                     <div class="form-group">
@@ -153,44 +164,21 @@ class Adhesion_User_Account {
                 </div>
             </form>
             
-            <?php if ($atts['show_register_link'] === 'yes') : ?>
-                <div class="adhesion-form-footer">
-                    <p><?php _e('¿No tienes cuenta?', 'adhesion'); ?> 
-                       <a href="#" onclick="showRegisterForm(); return false;">
-                           <?php _e('Crear cuenta', 'adhesion'); ?>
-                       </a>
-                    </p>
-                </div>
-            <?php endif; ?>
-            
             <div class="adhesion-form-messages"></div>
         </div>
         <?php
         return ob_get_clean();
-    }
-    
+    }    
+
+
     /**
      * Shortcode para formulario de registro
      */
     public function register_shortcode($atts = array()) {
         if (is_user_logged_in()) {
             return '<div class="adhesion-message info">' . 
-                   __('Ya estás registrado y conectado.', 'adhesion') . 
-                   '</div>';
-        }
-        
-        return $this->render_register_form($atts);
-    }
-    
-    /**
-     * Renderizar formulario de registro
-     */
-    public function render_register_form($atts = array()) {
-        // Si ya está logueado, mostrar mensaje
-        if (is_user_logged_in()) {
-            return '<div class="adhesion-notice adhesion-notice-info">' . 
-                   __('Ya estás registrado y conectado.', 'adhesion') . 
-                   '</div>';
+                __('Ya estás registrado y conectado.', 'adhesion') . 
+                '</div>';
         }
         
         $atts = shortcode_atts(array(
@@ -201,25 +189,40 @@ class Adhesion_User_Account {
         ob_start();
         ?>
         <div class="adhesion-register-form">
+            
+            <?php if ($atts['show_login_link'] === 'yes') : ?>
+                <div class="adhesion-form-header">
+                    <p><?php _e('¿Ya tienes cuenta?', 'adhesion'); ?> 
+                    <a href="<?php echo home_url('/mi-cuenta/'); ?>">
+                        <?php _e('Inicia sesión', 'adhesion'); ?>
+                    </a>
+                    </p>
+                </div>
+            <?php endif; ?>
+            
             <form id="adhesion-register-form" class="adhesion-form">
                 <?php wp_nonce_field('adhesion_user_register', 'adhesion_register_nonce'); ?>
                 
                 <div class="form-section">
                     <h3><?php _e('Crear Cuenta', 'adhesion'); ?></h3>
                     
-                    <!-- CIF - Campo principal según especificaciones -->
+                    <!-- Email - Campo principal para login -->
+                    <div class="form-group">
+                        <label for="reg_email"><?php _e('Correo Electrónico *', 'adhesion'); ?></label>
+                        <input type="email" id="reg_email" name="user_email" required>
+                    </div>
+                    
+                    <!-- CIF -->
                     <div class="form-group">
                         <label for="reg_cif"><?php _e('CIF *', 'adhesion'); ?></label>
                         <input type="text" id="reg_cif" name="user_cif" required 
-                               placeholder="<?php _e('Introduzca el CIF de la empresa', 'adhesion'); ?>">
-                        <small class="form-help"><?php _e('El CIF será utilizado como nombre de usuario', 'adhesion'); ?></small>
+                            placeholder="<?php _e('Introduzca el CIF de la empresa', 'adhesion'); ?>">
                     </div>
                     
                     <!-- Empresa -->
                     <div class="form-group">
                         <label for="reg_empresa"><?php _e('Empresa *', 'adhesion'); ?></label>
-                        <input type="text" id="reg_empresa" name="empresa" required
-                               placeholder="<?php _e('Nombre de la empresa', 'adhesion'); ?>">
+                        <input type="text" id="reg_empresa" name="empresa" required>
                     </div>
                     
                     <!-- Nombre completo -->
@@ -235,18 +238,10 @@ class Adhesion_User_Account {
                         </div>
                     </div>
                     
-                    <!-- Email -->
-                    <div class="form-group">
-                        <label for="reg_email"><?php _e('Correo Electrónico *', 'adhesion'); ?></label>
-                        <input type="email" id="reg_email" name="user_email" required>
-                        <small class="form-help"><?php _e('Un email puede estar asociado a varios CIF', 'adhesion'); ?></small>
-                    </div>
-                    
                     <!-- Teléfono -->
                     <div class="form-group">
                         <label for="reg_telefono"><?php _e('Teléfono *', 'adhesion'); ?></label>
-                        <input type="tel" id="reg_telefono" name="telefono" required
-                               placeholder="<?php _e('Número de teléfono de contacto', 'adhesion'); ?>">
+                        <input type="tel" id="reg_telefono" name="telefono" required>
                     </div>
                     
                     <!-- Contraseñas -->
@@ -280,22 +275,13 @@ class Adhesion_User_Account {
                 </div>
             </form>
             
-            <?php if ($atts['show_login_link'] === 'yes') : ?>
-                <div class="adhesion-form-footer">
-                    <p><?php _e('¿Ya tienes cuenta?', 'adhesion'); ?> 
-                       <a href="#" onclick="showLoginForm(); return false;">
-                           <?php _e('Inicia sesión', 'adhesion'); ?>
-                       </a>
-                    </p>
-                </div>
-            <?php endif; ?>
-            
             <div class="adhesion-form-messages"></div>
         </div>
         <?php
         return ob_get_clean();
     }
     
+
     /**
      * ================================
      * PROCESAMIENTO AJAX
@@ -317,7 +303,7 @@ class Adhesion_User_Account {
         $redirect_to = isset($_POST['redirect_to']) ? esc_url($_POST['redirect_to']) : '';
         
         if (empty($user_login) || empty($user_password)) {
-            wp_send_json_error(__('CIF y contraseña son obligatorios.', 'adhesion'));
+            wp_send_json_error(__('Email y contraseña son obligatorios.', 'adhesion'));
         }
         
         // Intentar login
@@ -330,7 +316,7 @@ class Adhesion_User_Account {
         $user = wp_signon($creds, false);
         
         if (is_wp_error($user)) {
-            wp_send_json_error(__('CIF o contraseña incorrectos.', 'adhesion'));
+            wp_send_json_error(__('Email o contraseña incorrectos.', 'adhesion'));
         }
         
         // Verificar que es usuario de adhesión
@@ -356,11 +342,11 @@ class Adhesion_User_Account {
         
         try {
             // Validar datos requeridos según especificaciones v4
+            $user_email = sanitize_email($_POST['user_email']);
             $user_cif = sanitize_text_field($_POST['user_cif']);
             $empresa = sanitize_text_field($_POST['empresa']);
             $first_name = sanitize_text_field($_POST['first_name']);
             $last_name = sanitize_text_field($_POST['last_name']);
-            $user_email = sanitize_email($_POST['user_email']);
             $telefono = sanitize_text_field($_POST['telefono']);
             $user_password = $_POST['user_password'];
             $confirm_password = $_POST['confirm_password'];
@@ -368,8 +354,8 @@ class Adhesion_User_Account {
             $redirect_to = isset($_POST['redirect_to']) ? esc_url($_POST['redirect_to']) : '';
             
             // Validaciones obligatorias
-            if (empty($user_cif) || empty($empresa) || empty($first_name) || 
-                empty($last_name) || empty($user_email) || empty($telefono) || 
+            if (empty($user_email) || empty($user_cif) || empty($empresa) || 
+                empty($first_name) || empty($last_name) || empty($telefono) || 
                 empty($user_password)) {
                 throw new Exception(__('Todos los campos obligatorios deben ser completados.', 'adhesion'));
             }
@@ -379,8 +365,19 @@ class Adhesion_User_Account {
                 throw new Exception(__('Email no válido.', 'adhesion'));
             }
             
-            // Verificar que el CIF no exista (será el username)
-            if (username_exists($user_cif)) {
+            // Verificar que el email no exista (será el username)
+            if (email_exists($user_email)) {
+                throw new Exception(__('Este email ya está registrado en el sistema.', 'adhesion'));
+            }
+            
+            // Verificar que el CIF no exista (regla de negocio)
+            $existing_cif = get_users(array(
+                'meta_key' => 'cif',
+                'meta_value' => $user_cif,
+                'number' => 1
+            ));
+            
+            if (!empty($existing_cif)) {
                 throw new Exception(__('Este CIF ya está registrado en el sistema.', 'adhesion'));
             }
             
@@ -398,9 +395,9 @@ class Adhesion_User_Account {
                 throw new Exception(__('Debes aceptar los términos y condiciones.', 'adhesion'));
             }
             
-            // Crear usuario - CIF como username según especificaciones
+            // Crear usuario - EMAIL como username
             $user_data = array(
-                'user_login' => $user_cif,  // CIF será el usuario
+                'user_login' => $user_email,  // Email será el usuario
                 'user_email' => $user_email,
                 'user_pass' => $user_password,
                 'first_name' => $first_name,
@@ -441,8 +438,9 @@ class Adhesion_User_Account {
             adhesion_log('Error during user registration: ' . $e->getMessage(), 'error');
             wp_send_json_error($e->getMessage());
         }
-    }
-    
+    }    
+
+
     /**
      * ================================
      * MÉTODOS AUXILIARES
@@ -513,7 +511,7 @@ Bienvenido a %s. Tu cuenta ha sido creada correctamente.
 
 Datos de acceso:
 - CIF: %s
-- Email: %s
+- Email: %s 
 
 Puedes acceder a tu cuenta desde: %s
 
@@ -619,4 +617,7 @@ El equipo de %s', 'adhesion'),
             'message' => __('Funcionalidad en desarrollo.', 'adhesion')
         ));
     }
+
+    
+
 }
