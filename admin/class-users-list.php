@@ -138,11 +138,14 @@ class Adhesion_Users_List extends WP_List_Table {
     private function get_adhesion_users($per_page, $offset, $filters) {
         global $wpdb;
         
+        
         $where_clauses = array();
         $params = array();
         
         // Filtro base: solo usuarios con rol adhesion_client
-        $where_clauses[] = "um.meta_key = 'wp_capabilities' AND um.meta_value LIKE %s";
+        $capabilities_key = $wpdb->get_blog_prefix() . 'capabilities';
+        $where_clauses[] = "um.meta_key = %s AND um.meta_value LIKE %s";
+        $params[] = $capabilities_key;
         $params[] = '%adhesion_client%';
         
         // Filtros adicionales
@@ -176,36 +179,36 @@ class Adhesion_Users_List extends WP_List_Table {
         $orderby = sanitize_sql_orderby($filters['orderby'] . ' ' . $filters['order']);
         $orderby = $orderby ?: 'u.user_registered DESC';
         
-        // Query principal con estadísticas
+        // Query principal con estadísticas - VERSIÓN CORREGIDA
         $sql = "SELECT u.*, 
-                       um_first.meta_value as first_name,
-                       um_last.meta_value as last_name,
-                       um_phone.meta_value as phone,
-                       um_company.meta_value as company,
-                       COUNT(DISTINCT c.id) as calculation_count,
-                       COUNT(DISTINCT ct.id) as contract_count,
-                       SUM(CASE WHEN ct.payment_status = 'completed' THEN ct.payment_amount ELSE 0 END) as total_paid,
-                       MAX(GREATEST(COALESCE(c.created_at, '1970-01-01'), COALESCE(ct.created_at, '1970-01-01'))) as last_activity
+                    um_first.meta_value as first_name,
+                    um_last.meta_value as last_name,
+                    um_phone.meta_value as phone,
+                    um_company.meta_value as company,
+                    COUNT(DISTINCT c.id) as calculation_count,
+                    COUNT(DISTINCT ct.id) as contract_count,
+                    COALESCE(SUM(CASE WHEN ct.payment_status = 'completed' THEN ct.payment_amount ELSE 0 END), 0) as total_paid,
+                    MAX(GREATEST(
+                        COALESCE(c.created_at, '1970-01-01'),
+                        COALESCE(ct.created_at, '1970-01-01')
+                    )) as last_activity
                 FROM {$wpdb->users} u
                 INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
                 LEFT JOIN {$wpdb->usermeta} um_first ON u.ID = um_first.user_id AND um_first.meta_key = 'first_name'
                 LEFT JOIN {$wpdb->usermeta} um_last ON u.ID = um_last.user_id AND um_last.meta_key = 'last_name'
                 LEFT JOIN {$wpdb->usermeta} um_phone ON u.ID = um_phone.user_id AND um_phone.meta_key = 'phone'
                 LEFT JOIN {$wpdb->usermeta} um_company ON u.ID = um_company.user_id AND um_company.meta_key = 'company'
-                LEFT JOIN {$wpdb->prefix}adhesion_calculations c ON u.ID = c.user_id AND c.status = 'active'
+                LEFT JOIN {$wpdb->prefix}adhesion_calculations c ON u.ID = c.user_id
                 LEFT JOIN {$wpdb->prefix}adhesion_contracts ct ON u.ID = ct.user_id
-                WHERE $where_sql
+                WHERE {$where_sql}
                 GROUP BY u.ID
-                ORDER BY $orderby
+                ORDER BY {$orderby}
                 LIMIT %d OFFSET %d";
-        
+
         $params[] = $per_page;
         $params[] = $offset;
-        
-        return $wpdb->get_results(
-            $wpdb->prepare($sql, $params),
-            ARRAY_A
-        );
+
+        return $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
     }
     
     /**
@@ -251,7 +254,9 @@ class Adhesion_Users_List extends WP_List_Table {
         $params = array();
         
         // Filtro base: solo usuarios con rol adhesion_client
-        $where_clauses[] = "um.meta_key = 'wp_capabilities' AND um.meta_value LIKE %s";
+        $capabilities_key = $wpdb->get_blog_prefix() . 'capabilities';
+        $where_clauses[] = "um.meta_key = %s AND um.meta_value LIKE %s";
+        $params[] = $capabilities_key;
         $params[] = '%adhesion_client%';
         
         // Aplicar los mismos filtros
