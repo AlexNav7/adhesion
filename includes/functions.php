@@ -14,39 +14,59 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+
 /**
  * Sistema de debug logging para el plugin
- * 
- * @param string $message Mensaje a logear
- * @param string $context Contexto adicional (opcional)
  */
 function adhesion_debug_log($message, $context = '') {
     if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
-        $context_str = $context ? " - {$context}" : '';
-        error_log("[ADHESION DEBUG{$context_str}] {$message}");
+        adhesion_write_log($message, 'DEBUG', $context);
     }
 }
 
 /**
- * Log de errores (siempre se registra, independiente del debug)
- * 
- * @param string $message Mensaje de error
- * @param string $context Contexto del error
+ * Log de errores (siempre se registra)
  */
 function adhesion_error_log($message, $context = '') {
-    $context_str = $context ? " - {$context}" : '';
-    error_log("[ADHESION ERROR{$context_str}] {$message}");
+    adhesion_write_log($message, 'ERROR', $context);
 }
 
 /**
  * Log de información importante (siempre se registra)
- * 
- * @param string $message Mensaje informativo
- * @param string $context Contexto
  */
 function adhesion_info_log($message, $context = '') {
-    $context_str = $context ? " - {$context}" : '';
-    error_log("[ADHESION INFO{$context_str}] {$message}");
+    adhesion_write_log($message, 'INFO', $context);
+}
+
+/**
+ * Escribir en archivo de log del plugin
+ */
+function adhesion_write_log($message, $level = 'INFO', $context = '') {
+    try {
+        // Crear directorio de logs si no existe
+        $log_dir = ADHESION_PLUGIN_PATH . 'logs/';
+        if (!file_exists($log_dir)) {
+            wp_mkdir_p($log_dir);
+            
+            // Crear .htaccess para proteger los logs
+            file_put_contents($log_dir . '.htaccess', "Deny from all\n");
+        }
+        
+        // Archivo único: adhesion.log
+        $log_file = $log_dir . 'adhesion.log';
+        
+        // Formatear el mensaje
+        $timestamp = date('Y-m-d H:i:s');
+        $context_str = $context ? " [{$context}]" : '';
+        $log_entry = "[{$timestamp}] {$level}{$context_str}: {$message}" . PHP_EOL;
+        
+        // Escribir al archivo
+        file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+        
+    } catch (Exception $e) {
+        // Fallback a error_log si falla
+        error_log("[ADHESION {$level}] {$message}");
+    }
 }
 
 // ==========================================

@@ -283,55 +283,7 @@ class Adhesion_Public {
         return ob_get_clean();
     }
     
-    /**
-     * Shortcode: Login personalizado
-     */
-    public function login_shortcode($atts) {
-        $atts = shortcode_atts(array(
-            'redirect' => '',
-            'show_register_link' => 'true'
-        ), $atts);
-        
-        if (is_user_logged_in()) {
-            $account_url = $this->get_account_url();
-            return '<div class="adhesion-notice adhesion-notice-info">' . 
-                   '<p>' . sprintf(__('Ya estás logueado. <a href="%s">Ir a mi cuenta</a>', 'adhesion'), $account_url) . '</p>' .
-                   '</div>';
-        }
-        
-        ob_start();
-        include ADHESION_PLUGIN_PATH . 'public/partials/login-form.php';
-        return ob_get_clean();
-    }
-    
-    /**
-     * Shortcode: Registro personalizado
-     */
-    public function register_shortcode($atts) {
-        $atts = shortcode_atts(array(
-            'redirect' => '',
-            'show_login_link' => 'true'
-        ), $atts);
-        
-        if (is_user_logged_in()) {
-            $account_url = $this->get_account_url();
-            return '<div class="adhesion-notice adhesion-notice-info">' . 
-                   '<p>' . sprintf(__('Ya estás registrado. <a href="%s">Ir a mi cuenta</a>', 'adhesion'), $account_url) . '</p>' .
-                   '</div>';
-        }
-        
-        // Verificar si el registro está habilitado
-        if (!get_option('users_can_register')) {
-            return '<div class="adhesion-notice adhesion-notice-warning">' . 
-                   '<p>' . __('El registro de usuarios no está habilitado.', 'adhesion') . '</p>' .
-                   '</div>';
-        }
-        
-        ob_start();
-        include ADHESION_PLUGIN_PATH . 'public/partials/register-form.php';
-        return ob_get_clean();
-    }
-    
+
     // ==========================================
     // MANEJO DE FORMULARIOS
     // ==========================================
