@@ -410,8 +410,9 @@ function adhesion_display_user_detail($user_id, $db) {
     $user_meta = array(
         'first_name' => get_user_meta($user_id, 'first_name', true),
         'last_name' => get_user_meta($user_id, 'last_name', true),
-        'phone' => get_user_meta($user_id, 'phone', true),
-        'company' => get_user_meta($user_id, 'company', true)
+        'telefono' => get_user_meta($user_id, 'telefono', true),
+        'empresa' => get_user_meta($user_id, 'empresa', true),
+        'cif' => get_user_meta($user_id, 'cif', true)
     );
     
     // Calcular estadísticas
@@ -474,11 +475,15 @@ function adhesion_display_user_detail($user_id, $db) {
                                 </tr>
                                 <tr>
                                     <th><?php _e('Teléfono:', 'adhesion'); ?></th>
-                                    <td><?php echo $user_meta['phone'] ? '<a href="tel:' . esc_attr($user_meta['phone']) . '">' . esc_html($user_meta['phone']) . '</a>' : '-'; ?></td>
+                                    <td><?php echo $user_meta['telefono'] ? '<a href="tel:' . esc_attr($user_meta['telefono']) . '">' . esc_html($user_meta['telefono']) . '</a>' : '-'; ?></td>
                                 </tr>
                                 <tr>
                                     <th><?php _e('Empresa:', 'adhesion'); ?></th>
-                                    <td><?php echo esc_html($user_meta['company']) ?: '-'; ?></td>
+                                    <td><?php echo esc_html($user_meta['empresa']) ?: '-'; ?></td>
+                                </tr>
+                                <tr>
+                                    <th><?php _e('CIF:', 'adhesion'); ?></th>
+                                    <td><?php echo esc_html($user_meta['cif']) ?: '-'; ?></td>
                                 </tr>
                                 <tr>
                                     <th><?php _e('Registrado:', 'adhesion'); ?></th>

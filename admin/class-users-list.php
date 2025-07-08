@@ -335,7 +335,7 @@ class Adhesion_Users_List extends WP_List_Table {
         $output = '<strong><a href="' . admin_url('user-edit.php?user_id=' . $item['ID']) . '">' . esc_html($display_name) . '</a></strong>';
         
         if ($full_name && $full_name !== $display_name) {
-            $output .= '<br><small><em>' . esc_html($full_name) . '</em></small>';
+            $output .= '<br><small><em>aa' . esc_html($full_name) . '</em></small>';
         }
         
         $output .= '<br><small>ID: ' . $item['ID'] . '</small>';
@@ -421,8 +421,11 @@ class Adhesion_Users_List extends WP_List_Table {
     public function column_actions($item) {
         $actions = array();
         
-        // Ver perfil
-        $actions['view'] = '<a href="' . admin_url('user-edit.php?user_id=' . $item['ID']) . '" class="button button-small">' . __('Ver Perfil', 'adhesion') . '</a>';
+        // Ver detalle en Adhesión
+        $actions['view_detail'] = '<a href="' . admin_url('admin.php?page=adhesion-users&action=view&user_id=' . $item['ID']) . '" class="button button-small button-primary">' . __('Ver Detalle', 'adhesion') . '</a>';
+
+        // Ver perfil de WordPress
+        $actions['view_profile'] = '<a href="' . admin_url('user-edit.php?user_id=' . $item['ID']) . '" class="button button-small">' . __('Editar Perfil', 'adhesion') . '</a>';        
         
         // Ver cálculos si tiene
         if ($item['calculation_count'] > 0) {
