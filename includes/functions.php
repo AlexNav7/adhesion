@@ -14,6 +14,41 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Sistema de debug logging para el plugin
+ * 
+ * @param string $message Mensaje a logear
+ * @param string $context Contexto adicional (opcional)
+ */
+function adhesion_debug_log($message, $context = '') {
+    if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+        $context_str = $context ? " - {$context}" : '';
+        error_log("[ADHESION DEBUG{$context_str}] {$message}");
+    }
+}
+
+/**
+ * Log de errores (siempre se registra, independiente del debug)
+ * 
+ * @param string $message Mensaje de error
+ * @param string $context Contexto del error
+ */
+function adhesion_error_log($message, $context = '') {
+    $context_str = $context ? " - {$context}" : '';
+    error_log("[ADHESION ERROR{$context_str}] {$message}");
+}
+
+/**
+ * Log de información importante (siempre se registra)
+ * 
+ * @param string $message Mensaje informativo
+ * @param string $context Contexto
+ */
+function adhesion_info_log($message, $context = '') {
+    $context_str = $context ? " - {$context}" : '';
+    error_log("[ADHESION INFO{$context_str}] {$message}");
+}
+
 // ==========================================
 // FUNCIONES DE FORMATO
 // ==========================================

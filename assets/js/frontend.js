@@ -1188,7 +1188,7 @@
     }
 
     function showLoginForm() {
-        window.location.href = '/mi-cuenta-adhesion/';
+        window.location.href = '/mi-cuenta/';
     }
 
     /**
@@ -1461,6 +1461,143 @@
     function clearFieldError($field) {
         $field.removeClass('error');
         $field.next('.field-error').remove();
+    }
+
+
+    /**
+     * ================================
+     * FUNCIONES DE VALIDACIÓN QUE FALTAN
+     * ================================
+     */
+
+    /**
+     * Validar formulario básico
+     */
+    function validateForm($form) {
+        let isValid = true;
+        
+        // Verificar campos requeridos
+        $form.find('[required]').each(function() {
+            const $field = $(this);
+            const value = $field.val().trim();
+            
+            if (!value) {
+                showFieldError($field, 'Este campo es obligatorio');
+                isValid = false;
+            } else {
+                clearFieldError($field);
+            }
+        });
+        
+        // Validar emails
+        $form.find('input[type="email"]').each(function() {
+            const $field = $(this);
+            const email = $field.val().trim();
+            
+            if (email && !isValidEmail(email)) {
+                showFieldError($field, 'Email no válido');
+                isValid = false;
+            }
+        });
+        
+        return isValid;
+    }
+
+    /**
+     * Validar formato de email
+     */
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    /**
+     * Mostrar error en campo específico
+     */
+    function showFieldError($field, message) {
+        clearFieldError($field);
+        $field.addClass('error');
+        $field.after(`<div class="field-error">${escapeHtml(message)}</div>`);
+    }
+
+    /**
+     * Limpiar error de campo específico
+     */
+    function clearFieldError($field) {
+        $field.removeClass('error');
+        $field.next('.field-error').remove();
+    }
+
+    /**
+     * Mostrar mensaje en formulario específico
+     */
+    function showFormMessage($form, type, message) {
+        let $messagesContainer = $form.find('.adhesion-form-messages');
+        
+        if ($messagesContainer.length === 0) {
+            $form.append('<div class="adhesion-form-messages"></div>');
+            $messagesContainer = $form.find('.adhesion-form-messages');
+        }
+        
+        const icon = type === 'success' ? 'yes-alt' : 'warning';
+        const messageHtml = `
+            <div class="adhesion-form-message ${type}">
+                <span class="dashicons dashicons-${icon}"></span>
+                ${escapeHtml(message)}
+            </div>
+        `;
+        
+        $messagesContainer.html(messageHtml);
+        
+        // Scroll al mensaje
+        $('html, body').animate({
+            scrollTop: $messagesContainer.offset().top - 20
+        }, 300);
+    }
+
+    /**
+     * Limpiar mensajes del formulario
+     */
+    function clearFormMessages($form) {
+        $form.find('.adhesion-form-messages').empty();
+    }
+
+    /**
+     * Escapar HTML para prevenir XSS
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    /**
+     * Verificar si email existe
+     */
+    function checkEmailExists(email, $field) {
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'adhesion_check_email_exists',
+                email: email,
+                nonce: adhesion_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.exists) {
+                        showFieldError($field, 'Este email ya está registrado');
+                    } else {
+                        clearFieldError($field);
+                    }
+                }
+            }
+        });
     }
 
 })(jQuery);

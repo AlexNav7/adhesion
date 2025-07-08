@@ -26,6 +26,11 @@ define('ADHESION_PLUGIN_VERSION', '1.0.0');
 define('ADHESION_PLUGIN_FILE', __FILE__);
 define('ADHESION_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Sistema de debug del plugin
+if (!defined('ADHESION_DEBUG')) {
+    define('ADHESION_DEBUG', true); // Cambiar a false para producción
+}
+
 // ==========================================================
 // CARGAR DEPENDENCIAS CRÍTICAS INMEDIATAMENTE
 // ==========================================================
@@ -90,6 +95,7 @@ class Adhesion_Plugin {
         // Las clases críticas ya se cargaron arriba, cargar el resto
         require_once ADHESION_PLUGIN_PATH . 'includes/class-database.php';
         require_once ADHESION_PLUGIN_PATH . 'includes/class-ajax-handler.php';
+        require_once ADHESION_PLUGIN_PATH . 'includes/class-email-manager.php';
         require_once ADHESION_PLUGIN_PATH . 'includes/functions.php';
     }
 
@@ -104,6 +110,8 @@ class Adhesion_Plugin {
         
         $this->init_public();
         $this->init_ajax();
+
+        Adhesion_Email_Manager::get_instance();
     }
 
     /**

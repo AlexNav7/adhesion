@@ -428,7 +428,7 @@ class Adhesion_Activator {
     private static function create_pages() {
         $pages = array(
             array('title' => 'Calculadora de Presupuesto', 'content' => '[adhesion_calculator]', 'slug' => 'calculadora-presupuesto'),
-            array('title' => 'Mi Cuenta - Adhesión', 'content' => '[adhesion_account]', 'slug' => 'mi-cuenta'),
+            array('title' => 'Mi Cuenta', 'content' => '[adhesion_account]', 'slug' => 'mi-cuenta'),
             array('title' => 'Registro', 'content' => '[adhesion_register]', 'slug' => 'registro'),
             array('title' => 'Proceso de Pago', 'content' => '[adhesion_payment]', 'slug' => 'proceso-pago'),
             array('title' => 'Firma de Contratos', 'content' => '[adhesion_contract_signing]', 'slug' => 'firma-contratos')

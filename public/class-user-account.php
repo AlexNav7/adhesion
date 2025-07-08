@@ -132,7 +132,7 @@ class Adhesion_User_Account {
             
             <form id="adhesion-login-form" class="adhesion-form">
                 <?php wp_nonce_field('adhesion_user_login', 'adhesion_login_nonce'); ?>
-                
+                <input type="hidden" name="action" value="adhesion_user_login">
                 <div class="form-section">
                     <h3><?php _e('Iniciar Sesión', 'adhesion'); ?></h3>
                     
@@ -202,7 +202,7 @@ class Adhesion_User_Account {
             
             <form id="adhesion-register-form" class="adhesion-form">
                 <?php wp_nonce_field('adhesion_user_register', 'adhesion_register_nonce'); ?>
-                
+                <input type="hidden" name="action" value="adhesion_user_register">
                 <div class="form-section">
                     <h3><?php _e('Crear Cuenta', 'adhesion'); ?></h3>
                     
@@ -407,7 +407,7 @@ class Adhesion_User_Account {
             );
             
             $user_id = wp_insert_user($user_data);
-            
+           
             if (is_wp_error($user_id)) {
                 throw new Exception($user_id->get_error_message());
             }
@@ -423,15 +423,19 @@ class Adhesion_User_Account {
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id);
             
+            adhesion_debug_log('Usuario creado con ID: ' . $user_id . ', intentando enviar email...', 'REGISTRO');
+
             // Enviar email de bienvenida
             $this->send_welcome_email($user_id);
+
+            adhesion_debug_log('Email de bienvenida procesado', 'REGISTRO');
             
             // Log del registro
             adhesion_log(sprintf('New user registered: %s (CIF: %s, ID: %d)', $user_email, $user_cif, $user_id), 'info');
             
             wp_send_json_success(array(
                 'message' => __('Cuenta creada correctamente. Bienvenido!', 'adhesion'),
-                'redirect_to' => $redirect_to ?: get_permalink()
+                'redirect_to' => $redirect_to ?: home_url('/calculadora-presupuesto/')
             ));
             
         } catch (Exception $e) {
@@ -496,40 +500,46 @@ class Adhesion_User_Account {
     }
     
     /**
-     * Enviar email de bienvenida
+     * Enviar email de bienvenida (usando Email Manager)
      */
     private function send_welcome_email($user_id) {
-        $user = get_userdata($user_id);
-        if (!$user) return false;
+        adhesion_debug_log('=== INICIANDO send_welcome_email() ===', 'EMAIL');
+        adhesion_debug_log('User ID recibido: ' . $user_id, 'EMAIL');
         
-        $subject = sprintf(__('Bienvenido a %s', 'adhesion'), get_bloginfo('name'));
-        
-        $message = sprintf(
-            __('Hola %s,
-
-Bienvenido a %s. Tu cuenta ha sido creada correctamente.
-
-Datos de acceso:
-- CIF: %s
-- Email: %s 
-
-Puedes acceder a tu cuenta desde: %s
-
-¡Gracias por registrarte!
-
-Saludos,
-El equipo de %s', 'adhesion'),
-            $user->display_name,
-            get_bloginfo('name'),
-            $user->user_login,
-            $user->user_email,
-            wp_login_url(),
-            get_bloginfo('name')
-        );
-        
-        return wp_mail($user->user_email, $subject, $message);
+        try {
+            // Verificar que Email Manager existe
+            if (!class_exists('Adhesion_Email_Manager')) {
+                adhesion_error_log('Clase Adhesion_Email_Manager no encontrada', 'EMAIL');
+                return false;
+            }
+            
+            adhesion_debug_log('Clase Email Manager encontrada, obteniendo instancia...', 'EMAIL');
+            
+            // Usar la nueva clase Email Manager
+            $email_manager = Adhesion_Email_Manager::get_instance();
+            
+            if (!$email_manager) {
+                adhesion_error_log('No se pudo obtener instancia de Email Manager', 'EMAIL');
+                return false;
+            }
+            
+            adhesion_debug_log('Instancia Email Manager obtenida, enviando email...', 'EMAIL');
+            
+            $result = $email_manager->send_welcome_email($user_id);
+            
+            adhesion_debug_log('Resultado send_welcome_email(): ' . ($result ? 'SUCCESS' : 'FAILED'), 'EMAIL');
+            adhesion_debug_log('=== FIN send_welcome_email() ===', 'EMAIL');
+            
+            return $result;
+            
+        } catch (Exception $e) {
+            adhesion_error_log('Excepción en send_welcome_email(): ' . $e->getMessage(), 'EMAIL');
+            adhesion_debug_log('=== FIN send_welcome_email() (CON ERROR) ===', 'EMAIL');
+            return false;
+        }
     }
-    
+
+
     /**
      * AJAX - Obtener detalles de cálculo
      */

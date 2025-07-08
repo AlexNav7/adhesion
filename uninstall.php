@@ -96,7 +96,7 @@ try {
     
     $page_slugs_to_delete = array(
         'calculadora-presupuesto',
-        'mi-cuenta-adhesion',
+        'mi-cuenta',
         'proceso-pago',
         'firma-contratos'
     );
