@@ -56,7 +56,7 @@ function adhesion_write_log($message, $level = 'INFO', $context = '') {
         $log_file = $log_dir . 'adhesion.log';
         
         // Formatear el mensaje
-        $timestamp = date('Y-m-d H:i:s');
+        $timestamp = current_time('Y-m-d H:i:s');
         $context_str = $context ? " [{$context}]" : '';
         $log_entry = "[{$timestamp}] {$level}{$context_str}: {$message}" . PHP_EOL;
         
@@ -625,3 +625,4 @@ add_action('admin_bar_menu', 'adhesion_remove_admin_links', 999);
 
 // Redirección personalizada después del login
 add_filter('login_redirect', 'adhesion_login_redirect_by_role', 10, 3);
+

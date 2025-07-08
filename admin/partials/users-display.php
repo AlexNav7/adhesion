@@ -49,22 +49,26 @@ function adhesion_display_users_list() {
     
     $user_stats = array();
     
-    // Total de usuarios adheridos
-    $user_stats['total'] = $wpdb->get_var(
+    $capabilities_key = $wpdb->get_blog_prefix() . 'capabilities';
+    $user_stats['total'] = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(DISTINCT u.ID) 
-         FROM {$wpdb->users} u 
-         INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id 
-         WHERE um.meta_key = 'wp_capabilities' AND um.meta_value LIKE '%adhesion_client%'"
-    );
+        FROM {$wpdb->users} u 
+        INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id 
+        WHERE um.meta_key = %s AND um.meta_value LIKE %s",
+        $capabilities_key,
+        '%adhesion_client%'
+    ));
     
     // Usuarios activos
-    $user_stats['active'] = $wpdb->get_var(
+    $user_stats['active'] = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(DISTINCT u.ID) 
-         FROM {$wpdb->users} u 
-         INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id 
-         WHERE um.meta_key = 'wp_capabilities' AND um.meta_value LIKE '%adhesion_client%'
-         AND u.user_status = 0"
-    );
+        FROM {$wpdb->users} u 
+        INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id 
+        WHERE um.meta_key = %s AND um.meta_value LIKE %s
+        AND u.user_status = 0",
+        $capabilities_key,
+        '%adhesion_client%'
+    ));
     
     // Usuarios con actividad (últimos 30 días)
     $user_stats['active_recently'] = $wpdb->get_var($wpdb->prepare(
