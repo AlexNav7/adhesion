@@ -436,8 +436,6 @@ class Adhesion_Users_List extends WP_List_Table {
             $actions['contracts'] = '<a href="' . esc_url($contract_url) . '" class="button button-small">' . __('Ver Contratos', 'adhesion') . '</a>';
         }
         
-        // Enviar email
-        $actions['email'] = '<button type="button" class="button button-small" onclick="adhesionSendUserEmail(' . $item['ID'] . ', \'' . esc_js($item['user_email']) . '\')">' . __('Email', 'adhesion') . '</button>';
         
         return '<div class="row-actions-wrapper">' . implode(' ', $actions) . '</div>';
     }
@@ -490,15 +488,7 @@ class Adhesion_Users_List extends WP_List_Table {
             <?php endif; ?>
         </div>
         
-        <div class="alignright actions">
-            <button type="button" class="button" onclick="adhesionExportUsers()">
-                <?php _e('Exportar CSV', 'adhesion'); ?>
-            </button>
-            
-            <button type="button" class="button button-primary" onclick="adhesionBulkEmail()">
-                <?php _e('Email Masivo', 'adhesion'); ?>
-            </button>
-        </div>
+
         <?php
     }
     

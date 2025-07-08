@@ -60,6 +60,13 @@ class Adhesion_Admin {
         
         // Inicialización del admin
         add_action('admin_init', array($this, 'admin_init'));
+
+        // Campos personalizados en perfiles de usuario
+        add_action('show_user_profile', array($this, 'show_extra_user_profile_fields'));
+        add_action('edit_user_profile', array($this, 'show_extra_user_profile_fields'));
+        add_action('personal_options_update', array($this, 'save_extra_user_profile_fields'));
+        add_action('edit_user_profile_update', array($this, 'save_extra_user_profile_fields'));
+
     }
     
     /**
@@ -556,4 +563,96 @@ class Adhesion_Admin {
         
         return $sanitized;
     }
+
+
+    /**
+     * Mostrar campos personalizados en el perfil de usuario
+     */
+    public function show_extra_user_profile_fields($user) {
+        // Solo mostrar para usuarios con rol adhesion_client
+        if (!in_array('adhesion_client', $user->roles)) {
+            return;
+        }
+        
+        // Obtener valores actuales
+        $empresa = get_user_meta($user->ID, 'empresa', true);
+        $cif = get_user_meta($user->ID, 'cif', true);
+        $telefono = get_user_meta($user->ID, 'telefono', true);
+        $registration_date = get_user_meta($user->ID, 'registration_date', true);
+        ?>
+        
+        <h2><?php _e('Información de Adhesión', 'adhesion'); ?></h2>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th><label for="empresa"><?php _e('Empresa', 'adhesion'); ?></label></th>
+                <td>
+                    <input type="text" name="empresa" id="empresa" value="<?php echo esc_attr($empresa); ?>" class="regular-text" />
+                    <p class="description"><?php _e('Nombre de la empresa del cliente.', 'adhesion'); ?></p>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label for="cif"><?php _e('CIF', 'adhesion'); ?></label></th>
+                <td>
+                    <input type="text" name="cif" id="cif" value="<?php echo esc_attr($cif); ?>" class="regular-text" />
+                    <p class="description"><?php _e('CIF de la empresa.', 'adhesion'); ?></p>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label for="telefono"><?php _e('Teléfono', 'adhesion'); ?></label></th>
+                <td>
+                    <input type="tel" name="telefono" id="telefono" value="<?php echo esc_attr($telefono); ?>" class="regular-text" />
+                    <p class="description"><?php _e('Número de teléfono de contacto.', 'adhesion'); ?></p>
+                </td>
+            </tr>
+            
+            <?php if ($registration_date): ?>
+            <tr>
+                <th><?php _e('Fecha de registro', 'adhesion'); ?></th>
+                <td>
+                    <span><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($registration_date)); ?></span>
+                    <p class="description"><?php _e('Fecha en que se registró en el sistema de adhesión.', 'adhesion'); ?></p>
+                </td>
+            </tr>
+            <?php endif; ?>
+        </table>
+        <?php
+    }
+
+    /**
+     * Guardar campos personalizados del perfil de usuario
+     */
+    public function save_extra_user_profile_fields($user_id) {
+        // Verificar permisos
+        if (!current_user_can('edit_user', $user_id)) {
+            return false;
+        }
+        
+        // Verificar que es un usuario de adhesión
+        $user = get_userdata($user_id);
+        if (!in_array('adhesion_client', $user->roles)) {
+            return false;
+        }
+        
+        // Sanitizar y guardar empresa
+        if (isset($_POST['empresa'])) {
+            $empresa = sanitize_text_field($_POST['empresa']);
+            update_user_meta($user_id, 'empresa', $empresa);
+        }
+        
+        // Sanitizar y guardar CIF
+        if (isset($_POST['cif'])) {
+            $cif = sanitize_text_field($_POST['cif']);
+            update_user_meta($user_id, 'cif', $cif);
+        }
+        
+        // Sanitizar y guardar teléfono
+        if (isset($_POST['telefono'])) {
+            $telefono = sanitize_text_field($_POST['telefono']);
+            update_user_meta($user_id, 'telefono', $telefono);
+        }
+    }
+
+
 }
