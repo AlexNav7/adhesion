@@ -82,16 +82,6 @@ class Adhesion_Public {
 
     }
     
-    /**
-     * Registrar shortcodes
-     */
-    public function register_shortcodes() {
-            error_log('ADHESION DEBUG: Registrando shortcode adhesion_calculator');
-            add_shortcode('adhesion_calculator', array($this, 'calculator_shortcode'));
-            add_shortcode('adhesion_payment', array($this, 'payment_shortcode'));
-            add_shortcode('adhesion_contract_signing', array($this, 'contract_signing_shortcode'));
-            error_log('ADHESION DEBUG: Shortcodes registrados en class-public');
-    }
     
     /**
      * Encolar scripts y estilos

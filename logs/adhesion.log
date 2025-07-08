@@ -1,0 +1,20 @@
+[2025-07-08 10:13:01] DEBUG [TEST]: Página de registro cargada
+[2025-07-08 10:13:01] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 10:13:01] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-08 10:14:57] DEBUG [REGISTRO]: Usuario creado con ID: 3, intentando enviar email...
+[2025-07-08 10:14:57] DEBUG [EMAIL]: === INICIANDO send_welcome_email() ===
+[2025-07-08 10:14:57] DEBUG [EMAIL]: User ID recibido: 3
+[2025-07-08 10:14:57] DEBUG [EMAIL]: Clase Email Manager encontrada, obteniendo instancia...
+[2025-07-08 10:14:57] DEBUG [EMAIL]: Instancia Email Manager obtenida, enviando email...
+[2025-07-08 10:14:57] DEBUG [EMAIL-MANAGER]: === send_welcome_email() INICIANDO ===
+[2025-07-08 10:14:57] DEBUG [EMAIL-MANAGER]: User ID: 3
+[2025-07-08 10:14:57] DEBUG [EMAIL-MANAGER]: Usuario encontrado: alex.jordi26@gmail.com
+[2025-07-08 10:14:58] DEBUG [EMAIL]: Resultado send_welcome_email(): SUCCESS
+[2025-07-08 10:14:58] DEBUG [EMAIL]: === FIN send_welcome_email() ===
+[2025-07-08 10:14:58] DEBUG [REGISTRO]: Email de bienvenida procesado
+[2025-07-08 10:19:36] DEBUG [TEST]: aaa Página de registro cargada
+[2025-07-08 10:19:36] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 10:19:36] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-08 10:22:33] DEBUG [TEST]: aaa Página de registro cargada
+[2025-07-08 10:22:33] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 10:22:33] ERROR [TEST]: Test de log de error (no es un error real)

@@ -180,6 +180,11 @@ class Adhesion_User_Account {
                 __('Ya estás registrado y conectado.', 'adhesion') . 
                 '</div>';
         }
+
+           // TEST DEL SISTEMA DE LOG - AGREGAR ESTAS LÍNEAS:
+    adhesion_debug_log('aaa Página de registro cargada', 'TEST');
+    adhesion_info_log('Usuario accedió a /registro/', 'TEST');
+    adhesion_error_log('Test de log de error (no es un error real)', 'TEST');
         
         $atts = shortcode_atts(array(
             'redirect' => '',

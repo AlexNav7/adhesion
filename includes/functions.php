@@ -547,3 +547,81 @@ function adhesion_get_system_info() {
     );
 }
 
+
+/**
+ * Restringir acceso al wp-admin para usuarios adhesion_client
+ */
+function adhesion_restrict_admin_access() {
+    // Solo aplicar a usuarios adhesion_client
+    if (current_user_can('adhesion_client') && !current_user_can('manage_options')) {
+        
+        // Permitir acceso solo a admin-ajax.php (necesario para AJAX)
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            return;
+        }
+        
+        // Permitir acceso a admin-post.php (formularios)
+        if (isset($_GET['action']) && strpos($_SERVER['REQUEST_URI'], 'admin-post.php') !== false) {
+            return;
+        }
+        
+        // Redirigir a la cuenta del usuario
+        wp_redirect(home_url('/mi-cuenta/'));
+        exit;
+    }
+}
+
+/**
+ * Ocultar la barra de administración para usuarios adhesion_client
+ */
+function adhesion_hide_admin_bar() {
+    if (current_user_can('adhesion_client') && !current_user_can('manage_options')) {
+        show_admin_bar(false);
+    }
+}
+
+/**
+ * Remover enlaces de wp-admin del perfil de usuario
+ */
+function adhesion_remove_admin_links($wp_admin_bar) {
+    if (current_user_can('adhesion_client') && !current_user_can('manage_options')) {
+        $wp_admin_bar->remove_node('dashboard');
+        $wp_admin_bar->remove_node('wp-logo');
+        $wp_admin_bar->remove_node('site-name');
+        $wp_admin_bar->remove_node('updates');
+        $wp_admin_bar->remove_node('comments');
+        $wp_admin_bar->remove_node('new-content');
+        $wp_admin_bar->remove_node('edit');
+    }
+}
+
+/**
+ * Redirigir después del login según el rol
+ */
+function adhesion_login_redirect_by_role($redirect_to, $request, $user) {
+    // Solo para usuarios sin errores
+    if (isset($user->roles) && is_array($user->roles)) {
+        // Si es usuario adhesion_client, redirigir a su cuenta
+        if (in_array('adhesion_client', $user->roles)) {
+            return home_url('/mi-cuenta/');
+        }
+    }
+    
+    return $redirect_to;
+}
+
+// ==============================================================================
+// EN includes/functions.php, AGREGAR ESTOS HOOKS:
+// ==============================================================================
+
+// Restricción de acceso al admin
+add_action('admin_init', 'adhesion_restrict_admin_access');
+
+// Ocultar barra de administración
+add_action('wp_loaded', 'adhesion_hide_admin_bar');
+
+// Remover enlaces del admin bar
+add_action('admin_bar_menu', 'adhesion_remove_admin_links', 999);
+
+// Redirección personalizada después del login
+add_filter('login_redirect', 'adhesion_login_redirect_by_role', 10, 3);
