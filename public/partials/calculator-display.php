@@ -47,15 +47,7 @@ $calculator_config = array(
 <div class="adhesion-calculator-container" id="adhesion-calculator">
     
     <!-- Header de la calculadora -->
-    <div class="adhesion-calculator-header">
-        <h2 class="calculator-title">
-            <span class="calculator-icon">📊</span>
-            <?php echo esc_html($atts['title']); ?>
-        </h2>
-        <p class="calculator-description">
-            <?php _e('Calcula el presupuesto para tus materiales de construcción. Los precios incluyen descuentos por volumen automáticos.', 'adhesion'); ?>
-        </p>
-    </div>
+
 
     <!-- Mensajes de estado -->
     <div id="adhesion-calculator-messages" class="adhesion-messages-container"></div>
@@ -64,13 +56,7 @@ $calculator_config = array(
     <form id="adhesion-calculator-form" class="adhesion-calculator-form">
         
         <!-- Información del usuario -->
-        <div class="calculator-user-info">
-            <div class="user-info-card">
-                <h3><?php _e('Calculando para:', 'adhesion'); ?></h3>
-                <p><strong><?php echo esc_html($user->display_name); ?></strong></p>
-                <p><?php echo esc_html($user->user_email); ?></p>
-            </div>
-        </div>
+
 
         <!-- Sección de materiales -->
         <div class="calculator-materials-section">
@@ -410,26 +396,6 @@ $calculator_config = array(
         </div>
     </div>
 
-    <!-- Historial de cálculos -->
-    <div class="calculation-history-section">
-        <h3 class="section-title">
-            <span class="section-icon">📈</span>
-            <?php _e('Mis cálculos recientes', 'adhesion'); ?>
-        </h3>
-        
-        <div id="recent-calculations" class="recent-calculations">
-            <div class="loading-calculations">
-                <span class="spinner"></span>
-                <?php _e('Cargando cálculos...', 'adhesion'); ?>
-            </div>
-        </div>
-        
-        <div class="history-actions">
-            <a href="<?php echo esc_url(home_url('/mi-cuenta/')); ?>" class="adhesion-btn adhesion-btn-outline">
-                <?php _e('Ver todos mis cálculos', 'adhesion'); ?>
-            </a>
-        </div>
-    </div>
 </div>
 
 <!-- Datos para JavaScript -->
@@ -977,11 +943,6 @@ $calculator_config = array(
         border: 1px solid #000;
     }
 }
-</style>0 auto;
-    padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
 .adhesion-calculator-header {
     text-align: center;
     margin-bottom: 30px;

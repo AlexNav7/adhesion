@@ -187,21 +187,36 @@ class Adhesion_Public {
      * Shortcode: Calculadora de presupuestos
      */
     public function calculator_shortcode($atts) {
-        // Verificar si la calculadora está habilitada
-        if (!adhesion_get_setting('calculator_enabled', '1')) {
-            return '<div class="adhesion-notice adhesion-notice-warning">' . 
-                '<p>' . __('La calculadora no está disponible temporalmente.', 'adhesion') . '</p>' .
-                '</div>';
-        }
+            // DEBUG: Verificar estado de la calculadora
+    $calculator_enabled = adhesion_get_setting('calculator_enabled', '1');
+    $user_logged_in = is_user_logged_in();
+    
+    // Mostrar información de debug temporalmente
+    $debug_info = "<div style='background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ddd;'>";
+    $debug_info .= "<strong>DEBUG INFO:</strong><br>";
+    $debug_info .= "Calculadora habilitada: " . ($calculator_enabled ? 'SÍ' : 'NO') . "<br>";
+    $debug_info .= "Usuario logueado: " . ($user_logged_in ? 'SÍ' : 'NO') . "<br>";
+    $debug_info .= "Ruta del archivo: " . ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php<br>';
+    $debug_info .= "Archivo existe: " . (file_exists(ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php') ? 'SÍ' : 'NO') . "<br>";
+    $debug_info .= "</div>";
+
         
-        // Verificar si el usuario está logueado (según especificaciones)
-        if (!is_user_logged_in()) {
-            return $this->login_required_message();
-        }
-        
-        ob_start();
-        include ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php';
-        return ob_get_clean();
+    // Resto del código original...
+    if (!adhesion_get_setting('calculator_enabled', '1')) {
+        return $debug_info . '<div class="adhesion-notice adhesion-notice-warning">' . 
+            '<p>' . __('La calculadora no está disponible temporalmente.', 'adhesion') . '</p>' .
+            '</div>';
+    }
+    
+    if (!is_user_logged_in()) {
+        return $debug_info . $this->login_required_message();
+    }
+    
+    ob_start();
+    include ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php';
+    $content = ob_get_clean();
+    
+    return $debug_info . $content;
     }
     
     /**

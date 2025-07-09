@@ -287,7 +287,38 @@ class Adhesion_Activator {
                 `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`),
                 KEY `material_type` (`material_type`)
+            ) {$charset_collate}",
+
+            'adhesion_ubica_prices' => "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}adhesion_ubica_prices` (
+                `id` mediumint(9) NOT NULL AUTO_INCREMENT,
+                `material_name` varchar(255) NOT NULL,
+                `price_domestic` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `price_commercial` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `price_industrial` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `sort_order` int(11) DEFAULT 0,
+                `is_active` tinyint(1) DEFAULT 1,
+                `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `material_name` (`material_name`),
+                KEY `sort_order` (`sort_order`)
+            ) {$charset_collate}",
+
+            'adhesion_reinicia_prices' => "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}adhesion_reinicia_prices` (
+                `id` mediumint(9) NOT NULL AUTO_INCREMENT,
+                `category_name` varchar(255) NOT NULL,
+                `price_kg` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `price_units` decimal(10,2) NOT NULL DEFAULT 0.00,
+                `allows_punctual_import` tinyint(1) DEFAULT 0,
+                `sort_order` int(11) DEFAULT 0,
+                `is_active` tinyint(1) DEFAULT 1,
+                `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `category_name` (`category_name`),
+                KEY `sort_order` (`sort_order`)
             ) {$charset_collate}"
+
         );
         
         $success_count = 0;
@@ -316,7 +347,9 @@ class Adhesion_Activator {
             $wpdb->prefix . 'adhesion_contracts',
             $wpdb->prefix . 'adhesion_documents',
             $wpdb->prefix . 'adhesion_settings',
-            $wpdb->prefix . 'adhesion_calculator_prices'
+            $wpdb->prefix . 'adhesion_calculator_prices',
+            $wpdb->prefix . 'adhesion_ubica_prices',          
+            $wpdb->prefix . 'adhesion_reinicia_prices' 
         );
         
         $existing_count = 0;

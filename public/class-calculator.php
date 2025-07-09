@@ -40,6 +40,9 @@ class Adhesion_Calculator {
      * Inicializar hooks
      */
     private function init_hooks() {
+        // Registrar shortcode de la calculadora
+        add_shortcode('adhesion_calculator', array($this, 'calculator_shortcode'));
+
         // AJAX para usuarios logueados
         add_action('wp_ajax_adhesion_calculate_budget', array($this, 'ajax_calculate_budget'));
         add_action('wp_ajax_adhesion_save_calculation', array($this, 'ajax_save_calculation'));
@@ -680,4 +683,58 @@ class Adhesion_Calculator {
         // Esta funcionalidad se puede implementar más adelante
         return false;
     }
+
+    /**
+     * Shortcode: Calculadora de presupuestos
+     */
+    public function calculator_shortcode($atts) {
+        // Verificar si la calculadora está habilitada
+        if (!adhesion_get_setting('calculator_enabled', '1')) {
+            return '<div class="adhesion-notice adhesion-notice-warning">' . 
+                '<p>' . __('La calculadora no está disponible temporalmente.', 'adhesion') . '</p>' .
+                '</div>';
+        }
+        
+        // Verificar si el usuario está logueado (según especificaciones)
+        if (!is_user_logged_in()) {
+            return $this->login_required_message();
+        }
+        
+        ob_start();
+        include ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Mensaje cuando se requiere login
+     */
+    private function login_required_message() {
+        $login_url = wp_login_url(get_permalink());
+        $register_url = $this->get_register_url();
+        
+        $message = '<div class="adhesion-notice adhesion-notice-info">';
+        $message .= '<div class="notice-content">';
+        $message .= '<h3>' . __('Acceso requerido', 'adhesion') . '</h3>';
+        $message .= '<p>' . __('Para usar la calculadora de presupuestos necesitas estar registrado.', 'adhesion') . '</p>';
+        $message .= '<div class="notice-actions">';
+        $message .= '<a href="' . esc_url($login_url) . '" class="adhesion-btn adhesion-btn-primary">' . __('Iniciar sesión', 'adhesion') . '</a>';
+        if ($register_url) {
+            $message .= '<a href="' . esc_url($register_url) . '" class="adhesion-btn adhesion-btn-outline">' . __('Registrarse', 'adhesion') . '</a>';
+        }
+        $message .= '</div>';
+        $message .= '</div>';
+        $message .= '</div>';
+        
+        return $message;
+    }
+
+    /**
+     * Obtener URL de registro
+     */
+    private function get_register_url() {
+        $page_id = adhesion_get_setting('page_registro');
+        return $page_id ? get_permalink($page_id) : wp_registration_url();
+    }
+
+
 }

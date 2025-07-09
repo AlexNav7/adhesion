@@ -87,7 +87,8 @@ class Adhesion_Admin {
         require_once ADHESION_PLUGIN_PATH . 'admin/class-users-list.php';
         require_once ADHESION_PLUGIN_PATH . 'admin/class-contracts-list.php';
         require_once ADHESION_PLUGIN_PATH . 'admin/class-calculations-list.php';
-        
+        require_once ADHESION_PLUGIN_PATH . 'admin/class-prices.php';
+                
         // // Inicializar solo cuando sea necesario
         // if (isset($_GET['page']) && strpos($_GET['page'], 'adhesion') === 0) {
         //     new Adhesion_Settings();
@@ -127,7 +128,17 @@ class Adhesion_Admin {
             $this->menu_slug,
             array($this, 'display_dashboard')
         );
-        
+
+        // Submenú: Gestión de Precios
+        add_submenu_page(
+            $this->menu_slug,
+            __('Gestión de Precios', 'adhesion'),
+            __('Precios', 'adhesion'),
+            'manage_options',
+            'adhesion-prices',
+            array($this, 'display_prices')
+        );
+                
         // Submenú: Cálculos
         add_submenu_page(
             $this->menu_slug,
@@ -653,6 +664,15 @@ class Adhesion_Admin {
             update_user_meta($user_id, 'telefono', $telefono);
         }
     }
+
+    /**
+     * Mostrar página de gestión de precios
+     */
+    public function display_prices() {
+        $prices_manager = new Adhesion_Prices();
+        $prices_manager->display_page();
+    }
+
 
 
 }
