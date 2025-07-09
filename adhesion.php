@@ -19,6 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+
 // Definir constantes del plugin
 define('ADHESION_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ADHESION_PLUGIN_PATH', plugin_dir_path(__FILE__));
@@ -29,6 +30,11 @@ define('ADHESION_PLUGIN_BASENAME', plugin_basename(__FILE__));
 // Sistema de debug del plugin
 if (!defined('ADHESION_DEBUG')) {
     define('ADHESION_DEBUG', true); // Cambiar a false para producción
+}
+
+if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
 }
 
 // ==========================================================
@@ -145,6 +151,11 @@ class Adhesion_Plugin {
      */
     private function init_ajax() {
         new Adhesion_Ajax_Handler();
+
+        // Cargar handlers AJAX específicos
+        require_once ADHESION_PLUGIN_PATH . 'includes/ajax/class-prices-ajax-handler.php';
+        new Adhesion_Prices_Ajax_Handler();
+
     }
 
     /**
@@ -200,6 +211,9 @@ class Adhesion_Plugin {
             return;
         }
 
+        // JavaScript del admin (si no está comentado)
+        wp_enqueue_script('jquery-ui-sortable');
+
         // CSS del admin
         wp_enqueue_style(
             'adhesion-admin-css',
@@ -208,25 +222,25 @@ class Adhesion_Plugin {
             ADHESION_PLUGIN_VERSION
         );
 
-        // JavaScript del admin
-        wp_enqueue_script(
-            'adhesion-admin-js',
-            ADHESION_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
-            ADHESION_PLUGIN_VERSION,
-            true
-        );
+        // // JavaScript del admin
+        // wp_enqueue_script(
+        //     'adhesion-admin-js',
+        //     ADHESION_PLUGIN_URL . 'assets/js/admin.js',
+        //     array('jquery'),
+        //     ADHESION_PLUGIN_VERSION,
+        //     true
+        // );
 
-        // Localizar script para AJAX del admin
-        wp_localize_script('adhesion-admin-js', 'adhesion_admin_ajax', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('adhesion_admin_nonce'),
-            'messages' => array(
-                'confirm_delete' => __('¿Estás seguro de que quieres eliminar este elemento?', 'adhesion'),
-                'error' => __('Ha ocurrido un error. Por favor, inténtalo de nuevo.', 'adhesion'),
-                'saved' => __('Cambios guardados correctamente.', 'adhesion')
-            )
-        ));
+        // // Localizar script para AJAX del admin
+        // wp_localize_script('adhesion-admin-js', 'adhesion_admin_ajax', array(
+        //     'ajax_url' => admin_url('admin-ajax.php'),
+        //     'nonce' => wp_create_nonce('adhesion_admin_nonce'),
+        //     'messages' => array(
+        //         'confirm_delete' => __('¿Estás seguro de que quieres eliminar este elemento?', 'adhesion'),
+        //         'error' => __('Ha ocurrido un error. Por favor, inténtalo de nuevo.', 'adhesion'),
+        //         'saved' => __('Cambios guardados correctamente.', 'adhesion')
+        //     )
+        // ));
     }
 }
 

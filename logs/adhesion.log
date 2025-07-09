@@ -21,3 +21,13 @@
 [2025-07-08 10:24:14] DEBUG [TEST]: aaa Página de registro cargada
 [2025-07-08 10:24:14] INFO [TEST]: Usuario accedió a /registro/
 [2025-07-08 10:24:14] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-08 10:24:44] DEBUG [TEST]: aaa Página de registro cargada
+[2025-07-08 10:24:44] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 10:24:44] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-08 10:24:46] DEBUG [TEST]: aaa Página de registro cargada
+[2025-07-08 10:24:46] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 10:24:46] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-08 12:25:16] DEBUG [TEST]: aaa Página de registro cargada
+[2025-07-08 12:25:16] INFO [TEST]: Usuario accedió a /registro/
+[2025-07-08 12:25:16] ERROR [TEST]: Test de log de error (no es un error real)
+[2025-07-09 17:43:28] DEBUG [TEST]: INICIA HOOK

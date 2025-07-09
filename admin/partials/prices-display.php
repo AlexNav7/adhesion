@@ -39,79 +39,65 @@ $prices_data = isset($prices_data) ? $prices_data : array();
                 <h2><?php _e('Precios UBICA - Material + Tipo × Toneladas', 'adhesion'); ?></h2>
                 
                 <!-- Formulario para añadir nuevo material UBICA -->
-                <div class="card">
+                <div class="card" style="width: 100%; max-width: none;">
                     <h3><?php _e('Añadir Nuevo Material UBICA', 'adhesion'); ?></h3>
                     <form method="post" action="">
                         <?php wp_nonce_field('adhesion_prices_action', 'adhesion_prices_nonce'); ?>
                         <input type="hidden" name="action" value="add_ubica_price">
                         
-                        <table class="form-table">
-                            <tr>
-                                <th scope="row">
-                                    <label for="material_name"><?php _e('Nombre del Material', 'adhesion'); ?></label>
-                                </th>
-                                <td>
-                                    <input type="text" 
-                                           id="material_name" 
-                                           name="material_name" 
-                                           class="regular-text" 
-                                           required
-                                           placeholder="<?php _e('Ej: Vidrio, Plástico, Metal...', 'adhesion'); ?>">
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">
-                                    <label for="price_domestic"><?php _e('Precio Doméstico (€/tonelada)', 'adhesion'); ?></label>
-                                </th>
-                                <td>
-                                    <input type="number" 
-                                           id="price_domestic" 
-                                           name="price_domestic" 
-                                           step="0.01" 
-                                           min="0" 
-                                           class="regular-text" 
-                                           required
-                                           placeholder="0.00">
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">
-                                    <label for="price_commercial"><?php _e('Precio Comercial (€/tonelada)', 'adhesion'); ?></label>
-                                </th>
-                                <td>
-                                    <input type="number" 
-                                           id="price_commercial" 
-                                           name="price_commercial" 
-                                           step="0.01" 
-                                           min="0" 
-                                           class="regular-text" 
-                                           required
-                                           placeholder="0.00">
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">
-                                    <label for="price_industrial"><?php _e('Precio Industrial (€/tonelada)', 'adhesion'); ?></label>
-                                </th>
-                                <td>
-                                    <input type="number" 
-                                           id="price_industrial" 
-                                           name="price_industrial" 
-                                           step="0.01" 
-                                           min="0" 
-                                           class="regular-text" 
-                                           required
-                                           placeholder="0.00">
-                                </td>
-                            </tr>
-                        </table>
+                        <div class="adhesion-form-grid">
+                            <div class="form-field">
+                                <label for="material_name"><?php _e('Nombre del Material', 'adhesion'); ?></label>
+                                <input type="text" 
+                                       id="material_name" 
+                                       name="material_name" 
+                                       class="regular-text" 
+                                       required
+                                       placeholder="<?php _e('Ej: Vidrio, Plástico, Metal...', 'adhesion'); ?>">
+                            </div>
+                            <div class="form-field">
+                                <label for="price_domestic"><?php _e('Precio Doméstico (€/tonelada)', 'adhesion'); ?></label>
+                                <input type="number" 
+                                       id="price_domestic" 
+                                       name="price_domestic" 
+                                       step="0.01" 
+                                       min="0" 
+                                       class="regular-text" 
+                                       required
+                                       placeholder="0.00">
+                            </div>
+                            <div class="form-field">
+                                <label for="price_commercial"><?php _e('Precio Comercial (€/tonelada)', 'adhesion'); ?></label>
+                                <input type="number" 
+                                       id="price_commercial" 
+                                       name="price_commercial" 
+                                       step="0.01" 
+                                       min="0" 
+                                       class="regular-text" 
+                                       required
+                                       placeholder="0.00">
+                            </div>
+                            <div class="form-field">
+                                <label for="price_industrial"><?php _e('Precio Industrial (€/tonelada)', 'adhesion'); ?></label>
+                                <input type="number" 
+                                       id="price_industrial" 
+                                       name="price_industrial" 
+                                       step="0.01" 
+                                       min="0" 
+                                       class="regular-text" 
+                                       required
+                                       placeholder="0.00">
+                            </div>
+                        </div>
                         
-                        <?php submit_button(__('Añadir Material UBICA', 'adhesion')); ?>
+                        <div class="submit-row">
+                            <?php submit_button(__('Añadir Material UBICA', 'adhesion')); ?>
+                        </div>
                     </form>
                 </div>
                 
                 <!-- Lista de materiales UBICA existentes -->
-                <div class="card">
+                <div class="card" style="width: 100%; max-width: none;">
                     <h3><?php _e('Materiales UBICA Configurados', 'adhesion'); ?></h3>
                     
                     <?php if (!empty($prices_data)): ?>
@@ -178,7 +164,7 @@ $prices_data = isset($prices_data) ? $prices_data : array();
                 <h2><?php _e('Precios REINICIA - Categorías + Medida (Kg/Unidades)', 'adhesion'); ?></h2>
                 
                 <!-- Formulario para añadir nueva categoría REINICIA -->
-                <div class="card">
+                <div class="card" style="width: 100%; max-width: none;">
                     <h3><?php _e('Añadir Nueva Categoría REINICIA', 'adhesion'); ?></h3>
                     <form method="post" action="">
                         <?php wp_nonce_field('adhesion_prices_action', 'adhesion_prices_nonce'); ?>
@@ -247,7 +233,7 @@ $prices_data = isset($prices_data) ? $prices_data : array();
                 </div>
                 
                 <!-- Lista de categorías REINICIA existentes -->
-                <div class="card">
+                <div class="card" style="width: 100%; max-width: none;">
                     <h3><?php _e('Categorías REINICIA Configuradas', 'adhesion'); ?></h3>
                     
                     <?php if (!empty($prices_data)): ?>
@@ -330,7 +316,348 @@ $prices_data = isset($prices_data) ? $prices_data : array();
     </div>
 </div>
 
+<script>
+jQuery(document).ready(function($) {
+    // Variables globales
+    var currentEditId = null;
+    var currentEditType = null;
+    
+    // Abrir modal de edición
+    $(document).on('click', '.edit-price', function(e) {
+        e.preventDefault();
+        
+        currentEditId = $(this).data('id');
+        currentEditType = $(this).data('type');
+
+       
+        // Cargar datos del precio
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'adhesion_get_price_data',
+                price_id: currentEditId,
+                price_type: currentEditType,
+                nonce: '<?php echo wp_create_nonce('adhesion_admin_nonce'); ?>'
+            },
+            beforeSend: function() {
+                $('#modal-form-content').html('<p><?php _e("Cargando...", "adhesion"); ?></p>');
+                $('#edit-price-modal').show();
+            },
+            success: function(response) {
+                if (response.success) {
+                    loadEditForm(response.data, currentEditType);
+                } else {
+                    alert('<?php _e("Error al cargar los datos", "adhesion"); ?>: ' + response.data);
+                    $('#edit-price-modal').hide();
+                }
+            },
+            error: function() {
+                alert('<?php _e("Error de conexión", "adhesion"); ?>');
+                $('#edit-price-modal').hide();
+            }
+        });
+    });
+    
+    // Cargar formulario de edición
+    function loadEditForm(data, type) {
+        var formHtml = '';
+        
+        if (type === 'ubica') {
+            formHtml = '<div class="adhesion-form-grid">' +
+                '<div class="form-field">' +
+                    '<label for="edit_material_name"><?php _e("Nombre del Material", "adhesion"); ?></label>' +
+                    '<input type="text" id="edit_material_name" name="material_name" value="' + data.material_name + '" required>' +
+                '</div>' +
+                '<div class="form-field">' +
+                    '<label for="edit_price_domestic"><?php _e("Precio Doméstico (€/t)", "adhesion"); ?></label>' +
+                    '<input type="number" id="edit_price_domestic" name="price_domestic" value="' + data.price_domestic + '" step="0.01" min="0" required>' +
+                '</div>' +
+                '<div class="form-field">' +
+                    '<label for="edit_price_commercial"><?php _e("Precio Comercial (€/t)", "adhesion"); ?></label>' +
+                    '<input type="number" id="edit_price_commercial" name="price_commercial" value="' + data.price_commercial + '" step="0.01" min="0" required>' +
+                '</div>' +
+                '<div class="form-field">' +
+                    '<label for="edit_price_industrial"><?php _e("Precio Industrial (€/t)", "adhesion"); ?></label>' +
+                    '<input type="number" id="edit_price_industrial" name="price_industrial" value="' + data.price_industrial + '" step="0.01" min="0" required>' +
+                '</div>' +
+            '</div>';
+        }
+        
+        $('#modal-form-content').html(formHtml);
+    }
+    
+    // Guardar cambios
+    $('#edit-price-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = {
+            action: 'adhesion_update_price',
+            price_id: currentEditId,
+            price_type: currentEditType,
+            nonce: '<?php echo wp_create_nonce('adhesion_admin_nonce'); ?>'
+        };
+        
+        // Recoger datos del formulario
+        $(this).find('input[name]').each(function() {
+            formData[$(this).attr('name')] = $(this).val();
+        });
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: formData,
+            beforeSend: function() {
+                $('#edit-price-form .button-primary').prop('disabled', true).text('<?php _e("Guardando...", "adhesion"); ?>');
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('<?php _e("Precio actualizado correctamente", "adhesion"); ?>');
+                    $('#edit-price-modal').hide();
+                    location.reload(); // Recargar para mostrar cambios
+                } else {
+                    alert('<?php _e("Error al actualizar", "adhesion"); ?>: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('<?php _e("Error de conexión", "adhesion"); ?>');
+            },
+            complete: function() {
+                $('#edit-price-form .button-primary').prop('disabled', false).text('<?php _e("Guardar Cambios", "adhesion"); ?>');
+            }
+        });
+    });
+    
+    // Cerrar modal
+    $('.close-modal, .cancel-edit').on('click', function() {
+        $('#edit-price-modal').hide();
+    });
+    
+    // Cerrar modal al hacer clic fuera
+    $('#edit-price-modal').on('click', function(e) {
+        if (e.target === this) {
+            $(this).hide();
+        }
+    });
+    
+    // Eliminar precio
+    $(document).on('click', '.delete-price', function(e) {
+        e.preventDefault();
+        
+        if (!confirm('<?php _e("¿Estás seguro de que quieres eliminar este precio?", "adhesion"); ?>')) {
+            return;
+        }
+        
+        var priceId = $(this).data('id');
+        var priceType = $(this).data('type');
+        var $row = $(this).closest('tr');
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'adhesion_delete_price',
+                price_id: priceId,
+                price_type: priceType,
+                nonce: '<?php echo wp_create_nonce('adhesion_admin_nonce'); ?>'
+            },
+            beforeSend: function() {
+                $row.css('opacity', '0.5');
+            },
+            success: function(response) {
+                if (response.success) {
+                    $row.fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                } else {
+                    alert('<?php _e("Error al eliminar", "adhesion"); ?>: ' + response.data);
+                    $row.css('opacity', '1');
+                }
+            },
+            error: function() {
+                alert('<?php _e("Error de conexión", "adhesion"); ?>');
+                $row.css('opacity', '1');
+            }
+        });
+    });
+    
+    // Toggle status
+    $(document).on('click', '.toggle-status', function(e) {
+        e.preventDefault();
+        
+        var priceId = $(this).data('id');
+        var priceType = $(this).data('type');
+        var $button = $(this);
+        var $statusBadge = $button.closest('tr').find('.status-badge');
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'adhesion_toggle_price_status',
+                price_id: priceId,
+                price_type: priceType,
+                nonce: '<?php echo wp_create_nonce('adhesion_admin_nonce'); ?>'
+            },
+            beforeSend: function() {
+                $button.prop('disabled', true);
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Cambiar texto del botón y estado
+                    if ($button.text().indexOf('<?php _e("Desactivar", "adhesion"); ?>') !== -1) {
+                        $button.text('<?php _e("Activar", "adhesion"); ?>');
+                        $statusBadge.removeClass('status-active').addClass('status-inactive').text('<?php _e("Inactivo", "adhesion"); ?>');
+                    } else {
+                        $button.text('<?php _e("Desactivar", "adhesion"); ?>');
+                        $statusBadge.removeClass('status-inactive').addClass('status-active').text('<?php _e("Activo", "adhesion"); ?>');
+                    }
+                } else {
+                    alert('<?php _e("Error al cambiar estado", "adhesion"); ?>: ' + response.data);
+                }
+            },
+            error: function() {
+                alert('<?php _e("Error de conexión", "adhesion"); ?>');
+            },
+            complete: function() {
+                $button.prop('disabled', false);
+            }
+        });
+    });
+
+    $('#ubica-prices-list, #reinicia-prices-list').sortable({
+        handle: '.sort-handle',
+        cursor: 'move',
+        axis: 'y',
+        placeholder: 'ui-state-highlight',
+        helper: function(e, tr) {
+            var $originals = tr.children();
+            var $helper = tr.clone();
+            $helper.children().each(function(index) {
+                $(this).width($originals.eq(index).width());
+            });
+            return $helper;
+        },
+        update: function(event, ui) {
+            var $table = $(this);
+            var priceType = $table.closest('.ubica-prices-section').length ? 'ubica' : 'reinicia';
+            var priceIds = [];
+            
+            // Recoger los IDs en el nuevo orden
+            $table.find('tr[data-id]').each(function(index) {
+                var id = $(this).data('id');
+                priceIds.push(id);
+                
+                // Actualizar el número de orden visualmente
+                $(this).find('.sort-handle').html(
+                    '<span class="dashicons dashicons-menu"></span>' + (index + 1)
+                );
+            });
+            
+            // Enviar al servidor
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'adhesion_sort_prices',
+                    price_ids: priceIds,
+                    price_type: priceType,
+                    nonce: '<?php echo wp_create_nonce('adhesion_admin_nonce'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Mostrar mensaje de éxito brevemente
+                        $('<div class="notice notice-success is-dismissible" style="position: fixed; top: 32px; right: 20px; z-index: 9999;"><p><?php _e("Orden actualizado correctamente", "adhesion"); ?></p></div>')
+                            .appendTo('body')
+                            .delay(2000)
+                            .fadeOut();
+                    } else {
+                        alert('<?php _e("Error al actualizar el orden", "adhesion"); ?>: ' + response.data);
+                        // Recargar para restaurar el orden original
+                        location.reload();
+                    }
+                },
+                error: function() {
+                    alert('<?php _e("Error de conexión al actualizar orden", "adhesion"); ?>');
+                    location.reload();
+                }
+            });
+        }
+    });
+
+    // Hacer que las filas se vean como draggables
+    $('#ubica-prices-list tr[data-id], #reinicia-prices-list tr[data-id]').css({
+        'cursor': 'move'
+    });
+
+    $('<style>')
+        .prop('type', 'text/css')
+        .html(`
+            .ui-state-highlight {
+                height: 40px;
+                background-color: #ffffcc;
+                border: 2px dashed #ccc;
+            }
+            .sort-handle:hover {
+                background-color: #f0f0f1;
+                cursor: move;
+            }
+            .ui-sortable-helper {
+                background-color: #fff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }
+        `)
+        .appendTo('head');
+
+
+});
+
+
+
+
+</script>
+
 <style>
+.adhesion-form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-field label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #23282d;
+}
+
+.form-field input {
+    width: 100% !important;
+}
+
+.submit-row {
+    text-align: left;
+    padding-top: 10px;
+    border-top: 1px solid #e1e1e1;
+}
+
+@media (max-width: 1200px) {
+    .adhesion-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .adhesion-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .status-badge {
     padding: 3px 8px;
     border-radius: 3px;
