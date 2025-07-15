@@ -494,20 +494,30 @@ class Adhesion_Payment {
      * Obtener URL de éxito
      */
     private function get_success_url($contract_id) {
+        // Usar la página del formulario de adhesión con step=contract_signing
+        $page_id = get_option('adhesion_settings')['page_formulario_adhesion'] ?? null;
+        $base_url = $page_id ? get_permalink($page_id) : home_url('/formulario-adhesion/');
+        
         return add_query_arg(array(
-            'adhesion_payment_return' => 'success',
-            'contract_id' => $contract_id
-        ), home_url());
+            'step' => 'contract_signing',
+            'contract_id' => $contract_id,
+            'payment_status' => 'success'
+        ), $base_url);
     }
     
     /**
      * Obtener URL de error
      */
     private function get_error_url($contract_id) {
+        // Volver al paso de pago con error
+        $page_id = get_option('adhesion_settings')['page_formulario_adhesion'] ?? null;
+        $base_url = $page_id ? get_permalink($page_id) : home_url('/formulario-adhesion/');
+        
         return add_query_arg(array(
-            'adhesion_payment_return' => 'error',
-            'contract_id' => $contract_id
-        ), home_url());
+            'step' => 'payment',
+            'contract_id' => $contract_id,
+            'payment_status' => 'error'
+        ), $base_url);
     }
     
     /**

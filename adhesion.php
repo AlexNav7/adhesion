@@ -4,7 +4,7 @@
  * Plugin URI: https://tudominio.com
  * Description: Plugin para gestionar el proceso completo de adhesión de clientes con calculadora, pagos y firma de contratos.
  * Version: 1.0.0
- * Author: Tu Nombre
+ * Author: Alex Navarro Sempere
  * License: GPL v2 or later
  * Text Domain: adhesion
  * Domain Path: /languages
@@ -136,12 +136,20 @@ class Adhesion_Plugin {
         
         require_once ADHESION_PLUGIN_PATH . 'public/class-public.php';
         require_once ADHESION_PLUGIN_PATH . 'public/class-user-account.php';
+        require_once ADHESION_PLUGIN_PATH . 'public/class-contract-form.php';
+        require_once ADHESION_PLUGIN_PATH . 'public/class-payment.php';
         
         error_log('ADHESION DEBUG: Archivos cargados, creando instancia de Adhesion_Public');
         new Adhesion_Public();
         
         error_log('ADHESION DEBUG: Instanciando Adhesion_User_Account');
         Adhesion_User_Account::get_instance();
+        
+        error_log('ADHESION DEBUG: Instanciando Adhesion_Contract_Form');
+        new Adhesion_Contract_Form();
+        
+        error_log('ADHESION DEBUG: Instanciando Adhesion_Payment');
+        new Adhesion_Payment();
         
         error_log('ADHESION DEBUG: init_public() completado');
     }
@@ -154,7 +162,21 @@ class Adhesion_Plugin {
 
         // Cargar handlers AJAX específicos
         require_once ADHESION_PLUGIN_PATH . 'includes/ajax/class-prices-ajax-handler.php';
+        require_once ADHESION_PLUGIN_PATH . 'includes/ajax/class-calculations-ajax-handler.php';
+        
+        // Cargar handler de transferencias si existe
+        $transfer_handler_path = ADHESION_PLUGIN_PATH . 'includes/ajax/class-transfer-payment-ajax-handler.php';
+        if (file_exists($transfer_handler_path)) {
+            require_once $transfer_handler_path;
+        }
+        
         new Adhesion_Prices_Ajax_Handler();
+        new Adhesion_Calculations_Ajax_Handler();
+        
+        // Instanciar handler de transferencias si la clase existe
+        if (class_exists('Adhesion_Transfer_Payment_Ajax_Handler')) {
+            new Adhesion_Transfer_Payment_Ajax_Handler();
+        }
 
     }
 
@@ -194,6 +216,7 @@ class Adhesion_Plugin {
         wp_localize_script('adhesion-frontend-js', 'adhesion_ajax', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('adhesion_nonce'),
+            'form_url' => $this->get_form_page_url(),
             'messages' => array(
                 'error' => __('Ha ocurrido un error. Por favor, inténtalo de nuevo.', 'adhesion'),
                 'loading' => __('Cargando...', 'adhesion'),
@@ -241,6 +264,25 @@ class Adhesion_Plugin {
         //         'saved' => __('Cambios guardados correctamente.', 'adhesion')
         //     )
         // ));
+    }
+    
+    /**
+     * Obtener URL de la página de formulario
+     */
+    private function get_form_page_url() {
+        $page_id = get_option('adhesion_settings')['page_formulario_adhesion'] ?? null;
+        if ($page_id) {
+            return get_permalink($page_id);
+        }
+        
+        // Fallback: buscar por slug
+        $page = get_page_by_path('formulario-adhesion');
+        if ($page) {
+            return get_permalink($page->ID);
+        }
+        
+        // Fallback final: URL por defecto
+        return home_url('/formulario-adhesion/');
     }
 }
 

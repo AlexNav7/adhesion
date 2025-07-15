@@ -6,8 +6,6 @@
  * Variables disponibles:
  * $user_name - Nombre completo del usuario
  * $user_email - Email del usuario
- * $user_cif - CIF de la empresa
- * $empresa - Nombre de la empresa
  * $site_name - Nombre del sitio web
  * $login_url - URL para iniciar sesión
  * $account_url - URL de la cuenta de usuario
@@ -156,16 +154,7 @@ if (!defined('ABSPATH')) {
                     <span class="credential-value"><?php echo esc_html($user_email); ?></span>
                 </div>
                 
-                <div class="credential-item">
-                    <span class="credential-label">Empresa:</span>
-                    <span class="credential-value"><?php echo esc_html($empresa); ?></span>
-                </div>
-                
-                <div class="credential-item">
-                    <span class="credential-label">CIF:</span>
-                    <span class="credential-value"><?php echo esc_html($user_cif); ?></span>
-                </div>
-                
+               
                 <div class="credential-item">
                     <span class="credential-label">Contraseña:</span>
                     <span class="credential-value">La que elegiste al registrarte</span>

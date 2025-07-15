@@ -212,18 +212,6 @@ class Adhesion_User_Account {
                         <input type="email" id="reg_email" name="user_email" required>
                     </div>
                     
-                    <!-- CIF -->
-                    <div class="form-group">
-                        <label for="reg_cif"><?php _e('CIF *', 'adhesion'); ?></label>
-                        <input type="text" id="reg_cif" name="user_cif" required 
-                            placeholder="<?php _e('Introduzca el CIF de la empresa', 'adhesion'); ?>">
-                    </div>
-                    
-                    <!-- Empresa -->
-                    <div class="form-group">
-                        <label for="reg_empresa"><?php _e('Empresa *', 'adhesion'); ?></label>
-                        <input type="text" id="reg_empresa" name="empresa" required>
-                    </div>
                     
                     <!-- Nombre completo -->
                     <div class="form-row">
@@ -238,11 +226,6 @@ class Adhesion_User_Account {
                         </div>
                     </div>
                     
-                    <!-- Teléfono -->
-                    <div class="form-group">
-                        <label for="reg_telefono"><?php _e('Teléfono *', 'adhesion'); ?></label>
-                        <input type="tel" id="reg_telefono" name="telefono" required>
-                    </div>
                     
                     <!-- Contraseñas -->
                     <div class="form-row">
@@ -343,20 +326,15 @@ class Adhesion_User_Account {
         try {
             // Validar datos requeridos según especificaciones v4
             $user_email = sanitize_email($_POST['user_email']);
-            $user_cif = sanitize_text_field($_POST['user_cif']);
-            $empresa = sanitize_text_field($_POST['empresa']);
             $first_name = sanitize_text_field($_POST['first_name']);
             $last_name = sanitize_text_field($_POST['last_name']);
-            $telefono = sanitize_text_field($_POST['telefono']);
             $user_password = $_POST['user_password'];
             $confirm_password = $_POST['confirm_password'];
             $accept_terms = isset($_POST['accept_terms']);
             $redirect_to = isset($_POST['redirect_to']) ? esc_url($_POST['redirect_to']) : '';
             
             // Validaciones obligatorias
-            if (empty($user_email) || empty($user_cif) || empty($empresa) || 
-                empty($first_name) || empty($last_name) || empty($telefono) || 
-                empty($user_password)) {
+            if (empty($user_email) || empty($first_name) || empty($last_name) || empty($user_password)) {
                 throw new Exception(__('Todos los campos obligatorios deben ser completados.', 'adhesion'));
             }
             
@@ -365,21 +343,11 @@ class Adhesion_User_Account {
                 throw new Exception(__('Email no válido.', 'adhesion'));
             }
             
-            // Verificar que el email no exista (será el username)
-            if (email_exists($user_email)) {
+            // Verificar que el email no exista como email o como username
+            if (email_exists($user_email) || username_exists($user_email)) {
                 throw new Exception(__('Este email ya está registrado en el sistema.', 'adhesion'));
             }
             
-            // Verificar que el CIF no exista (regla de negocio)
-            $existing_cif = get_users(array(
-                'meta_key' => 'cif',
-                'meta_value' => $user_cif,
-                'number' => 1
-            ));
-            
-            if (!empty($existing_cif)) {
-                throw new Exception(__('Este CIF ya está registrado en el sistema.', 'adhesion'));
-            }
             
             // Verificar contraseñas
             if ($user_password !== $confirm_password) {
@@ -413,9 +381,6 @@ class Adhesion_User_Account {
             }
             
             // Agregar metadatos adicionales según especificaciones
-            update_user_meta($user_id, 'empresa', $empresa);
-            update_user_meta($user_id, 'cif', $user_cif);
-            update_user_meta($user_id, 'telefono', $telefono);
             update_user_meta($user_id, 'registration_date', current_time('mysql'));
             update_user_meta($user_id, 'terms_accepted', current_time('mysql'));
             
@@ -431,7 +396,7 @@ class Adhesion_User_Account {
             adhesion_debug_log('Email de bienvenida procesado', 'REGISTRO');
             
             // Log del registro
-            adhesion_log(sprintf('New user registered: %s (CIF: %s, ID: %d)', $user_email, $user_cif, $user_id), 'info');
+            adhesion_log(sprintf('New user registered: %s (ID: %d)', $user_email, $user_id), 'info');
             
             wp_send_json_success(array(
                 'message' => __('Cuenta creada correctamente. Bienvenido!', 'adhesion'),

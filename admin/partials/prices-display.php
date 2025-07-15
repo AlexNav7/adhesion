@@ -242,8 +242,8 @@ $prices_data = isset($prices_data) ? $prices_data : array();
                                 <tr>
                                     <th><?php _e('Orden', 'adhesion'); ?></th>
                                     <th><?php _e('Categoría', 'adhesion'); ?></th>
-                                    <th><?php _e('Precio/Kg (€)', 'adhesion'); ?></th>
-                                    <th><?php _e('Precio/Unidad (€)', 'adhesion'); ?></th>
+                                    <th><?php _e('Precio/Kg €', 'adhesion'); ?></th>
+                                    <th><?php _e('Precio/Unidad €', 'adhesion'); ?></th>
                                     <th><?php _e('Import. Puntual', 'adhesion'); ?></th>
                                     <th><?php _e('Estado', 'adhesion'); ?></th>
                                     <th><?php _e('Acciones', 'adhesion'); ?></th>

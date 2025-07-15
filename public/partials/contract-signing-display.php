@@ -1,3 +1,427 @@
+<?php
+/**
+ * Vista de firma de contratos con DocuSign
+ * 
+ * Esta vista maneja:
+ * - Preparación de documentos para firma
+ * - Integración con DocuSign
+ * - Estados de firma (pendiente, firmado, rechazado)
+ * - Descarga de documentos firmados
+ * - Seguimiento del proceso
+ */
+
+// Prevenir acceso directo
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Verificar que el usuario esté logueado
+if (!is_user_logged_in()) {
+    echo '<div class="adhesion-notice adhesion-notice-error">';
+    echo '<p>' . __('Debes estar logueado para firmar contratos.', 'adhesion') . '</p>';
+    echo '<p><a href="' . wp_login_url(get_permalink()) . '" class="adhesion-btn adhesion-btn-primary">' . __('Iniciar Sesión', 'adhesion') . '</a></p>';
+    echo '</div>';
+    return;
+}
+
+// Verificar configuración de DocuSign
+if (!adhesion_is_docusign_configured()) {
+    echo '<div class="adhesion-notice adhesion-notice-error">';
+    echo '<p>' . __('La firma digital no está configurada. Contacta con el administrador.', 'adhesion') . '</p>';
+    echo '</div>';
+    return;
+}
+
+// Obtener datos necesarios
+$db = new Adhesion_Database();
+$user = wp_get_current_user();
+
+// Obtener ID del contrato desde parámetros
+$contract_id = isset($_GET['contract_id']) ? intval($_GET['contract_id']) : (isset($atts['contract_id']) ? intval($atts['contract_id']) : 0);
+
+// Variables para el proceso
+$contract = null;
+$calculation = null;
+$signing_step = 'loading'; // loading, ready, signing, signed, error
+
+// Obtener información del contrato
+if ($contract_id) {
+    $contract = $db->get_contract($contract_id);
+    if ($contract && $contract['user_id'] == $user->ID) {
+        // Obtener cálculo asociado si existe
+        if ($contract['calculation_id']) {
+            $calculation = $db->get_calculation($contract['calculation_id']);
+        }
+        
+        // Determinar paso según estado del contrato
+        switch ($contract['status']) {
+            case 'completed':
+                $signing_step = 'signed';
+                break;
+            case 'sent':
+            case 'pending_signature':
+                $signing_step = 'signing';
+                break;
+            case 'declined':
+            case 'voided':
+                $signing_step = 'error';
+                break;
+            default:
+                if ($contract['payment_status'] === 'completed') {
+                    $signing_step = 'ready';
+                } else {
+                    $signing_step = 'error';
+                }
+                break;
+        }
+    }
+} else {
+    // Si no hay contract_id, buscar contratos pendientes del usuario
+    $pending_contracts = $db->get_user_contracts($user->ID, array('completed_payment', 'pending_signature', 'sent'));
+    if (!empty($pending_contracts)) {
+        $contract = $pending_contracts[0];
+        $contract_id = $contract['id'];
+        $signing_step = $contract['status'] === 'completed' ? 'signed' : 'ready';
+    }
+}
+
+// Si no hay contrato válido, mostrar error
+if (!$contract) {
+    echo '<div class="adhesion-notice adhesion-notice-error">';
+    echo '<p>' . __('No se encontró un contrato válido para firmar.', 'adhesion') . '</p>';
+    echo '<p><a href="' . home_url('/mi-cuenta/') . '" class="adhesion-btn adhesion-btn-primary">' . __('Ir a Mi Cuenta', 'adhesion') . '</a></p>';
+    echo '</div>';
+    return;
+}
+
+// Configuración de la firma
+$signing_config = array(
+    'return_url' => add_query_arg(array('contract_id' => $contract_id, 'signed' => '1'), get_permalink()),
+    'timeout_minutes' => adhesion_get_option('signing_timeout', 30),
+    'reminder_days' => adhesion_get_option('reminder_days', 3)
+);
+?>
+
+<div class="adhesion-signing-container" id="adhesion-contract-signing">
+    
+    <!-- Header de firma -->
+    <div class="signing-header">
+        <h2 class="signing-title">
+            <span class="signing-icon">✍️</span>
+            <?php _e('Firma de Contrato', 'adhesion'); ?>
+        </h2>
+        
+        <!-- Estado del proceso -->
+        <div class="signing-status">
+            <div class="status-indicator status-<?php echo esc_attr($signing_step); ?>">
+                <?php
+                switch ($signing_step) {
+                    case 'ready':
+                        echo '<span class="status-icon">📋</span>';
+                        echo '<span class="status-text">' . __('Listo para firmar', 'adhesion') . '</span>';
+                        break;
+                    case 'signing':
+                        echo '<span class="status-icon">⏳</span>';
+                        echo '<span class="status-text">' . __('Pendiente de firma', 'adhesion') . '</span>';
+                        break;
+                    case 'signed':
+                        echo '<span class="status-icon">✅</span>';
+                        echo '<span class="status-text">' . __('Firmado correctamente', 'adhesion') . '</span>';
+                        break;
+                    case 'error':
+                        echo '<span class="status-icon">❌</span>';
+                        echo '<span class="status-text">' . __('Error en la firma', 'adhesion') . '</span>';
+                        break;
+                    default:
+                        echo '<span class="status-icon">🔄</span>';
+                        echo '<span class="status-text">' . __('Cargando...', 'adhesion') . '</span>';
+                        break;
+                }
+                ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes de estado -->
+    <div id="signing-messages" class="adhesion-messages-container"></div>
+
+    <!-- Información del contrato -->
+    <div class="contract-info">
+        <h3 class="info-title">
+            <span class="info-icon">📄</span>
+            <?php _e('Información del contrato', 'adhesion'); ?>
+        </h3>
+        
+        <div class="contract-details">
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label"><?php _e('Número de contrato:', 'adhesion'); ?></span>
+                    <span class="detail-value"><?php echo esc_html($contract['contract_number'] ?? 'Generando...'); ?></span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label"><?php _e('Cliente:', 'adhesion'); ?></span>
+                    <span class="detail-value"><?php echo esc_html($user->display_name); ?></span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label"><?php _e('Fecha de creación:', 'adhesion'); ?></span>
+                    <span class="detail-value"><?php echo adhesion_format_date($contract['created_at'], 'd/m/Y'); ?></span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label"><?php _e('Importe total:', 'adhesion'); ?></span>
+                    <span class="detail-value"><?php echo adhesion_format_price($contract['total_price'] ?? 0); ?></span>
+                </div>
+                
+                <?php if ($contract['payment_status'] === 'completed'): ?>
+                    <div class="detail-item">
+                        <span class="detail-label"><?php _e('Estado del pago:', 'adhesion'); ?></span>
+                        <span class="detail-value payment-completed">✅ <?php _e('Pagado', 'adhesion'); ?></span>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($contract['signed_at'])): ?>
+                    <div class="detail-item">
+                        <span class="detail-label"><?php _e('Fecha de firma:', 'adhesion'); ?></span>
+                        <span class="detail-value"><?php echo adhesion_format_date($contract['signed_at'], 'd/m/Y H:i'); ?></span>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <!-- Resumen del pedido -->
+        <?php if ($calculation): ?>
+            <div class="order-summary-section">
+                <h4><?php _e('Resumen del pedido:', 'adhesion'); ?></h4>
+                <?php
+                $materials_data = json_decode($calculation['materials_data'], true);
+                if ($materials_data):
+                ?>
+                    <div class="materials-summary">
+                        <?php foreach ($materials_data as $material): ?>
+                            <div class="material-item">
+                                <span class="material-name"><?php echo esc_html(ucfirst($material['type'])); ?></span>
+                                <span class="material-quantity"><?php echo adhesion_format_tons($material['quantity']); ?></span>
+                                <span class="material-total"><?php echo adhesion_format_price($material['total']); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Contenido principal según el paso -->
+    <div class="signing-content">
+        
+        <?php if ($signing_step === 'ready'): ?>
+            <!-- PASO: Listo para firmar -->
+            <div class="signing-step-content" id="ready-to-sign">
+                <div class="ready-content">
+                    <div class="ready-icon">
+                        <span class="icon-large">📋</span>
+                    </div>
+                    <h3 class="ready-title"><?php _e('Contrato listo para firmar', 'adhesion'); ?></h3>
+                    <p class="ready-description">
+                        <?php _e('Tu pago ha sido procesado correctamente. Ahora puedes proceder a firmar el contrato digitalmente usando DocuSign.', 'adhesion'); ?>
+                    </p>
+                    
+                    <!-- Información importante -->
+                    <div class="signing-info">
+                        <h4><?php _e('Información importante:', 'adhesion'); ?></h4>
+                        <ul class="info-list">
+                            <li>🔒 <?php _e('La firma se realiza de forma segura a través de DocuSign', 'adhesion'); ?></li>
+                            <li>📧 <?php _e('Recibirás un email con el enlace para firmar', 'adhesion'); ?></li>
+                            <li>⏰ <?php printf(__('Tienes %d días para completar la firma', 'adhesion'), $signing_config['reminder_days']); ?></li>
+                            <li>📱 <?php _e('Puedes firmar desde cualquier dispositivo', 'adhesion'); ?></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Acción principal -->
+                    <div class="ready-actions">
+                        <button type="button" id="start-signing-btn" class="adhesion-btn adhesion-btn-success adhesion-btn-large">
+                            <span class="btn-icon">✍️</span>
+                            <span class="btn-text"><?php _e('Firmar Contrato Ahora', 'adhesion'); ?></span>
+                            <span class="btn-loading" style="display: none;">
+                                <span class="spinner"></span>
+                                <?php _e('Preparando firma...', 'adhesion'); ?>
+                            </span>
+                        </button>
+                        
+                        <button type="button" id="send-email-btn" class="adhesion-btn adhesion-btn-outline">
+                            <span class="dashicons dashicons-email"></span>
+                            <?php _e('Enviar por email', 'adhesion'); ?>
+                        </button>
+                    </div>
+                    
+                    <!-- Información adicional -->
+                    <div class="additional-info">
+                        <details>
+                            <summary><?php _e('¿Qué sucede después de firmar?', 'adhesion'); ?></summary>
+                            <div class="details-content">
+                                <ol>
+                                    <li><?php _e('Recibirás una copia del contrato firmado por email', 'adhesion'); ?></li>
+                                    <li><?php _e('Nuestro equipo procesará tu pedido', 'adhesion'); ?></li>
+                                    <li><?php _e('Te contactaremos para coordinar la entrega', 'adhesion'); ?></li>
+                                    <li><?php _e('Podrás descargar el contrato desde tu área de cliente', 'adhesion'); ?></li>
+                                </ol>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+            
+        <?php elseif ($signing_step === 'signing'): ?>
+            <!-- PASO: En proceso de firma -->
+            <div class="signing-step-content" id="signing-in-progress">
+                <div class="signing-progress">
+                    <div class="progress-icon">
+                        <div class="spinner-large"></div>
+                    </div>
+                    <h3 class="progress-title"><?php _e('Firma en proceso', 'adhesion'); ?></h3>
+                    <p class="progress-description">
+                        <?php _e('El contrato ha sido enviado para firma. Revisa tu email para continuar con el proceso.', 'adhesion'); ?>
+                    </p>
+                    
+                    <!-- Acciones disponibles -->
+                    <div class="progress-actions">
+                        <button type="button" id="check-status-btn" class="adhesion-btn adhesion-btn-primary">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php _e('Verificar Estado', 'adhesion'); ?>
+                        </button>
+                        
+                        <button type="button" id="resend-email-btn" class="adhesion-btn adhesion-btn-outline">
+                            <span class="dashicons dashicons-email-alt"></span>
+                            <?php _e('Reenviar Email', 'adhesion'); ?>
+                        </button>
+                        
+                        <?php if (!empty($contract['docusign_envelope_id'])): ?>
+                            <button type="button" id="open-docusign-btn" class="adhesion-btn adhesion-btn-secondary">
+                                <span class="dashicons dashicons-external"></span>
+                                <?php _e('Abrir en DocuSign', 'adhesion'); ?>
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+        <?php elseif ($signing_step === 'signed'): ?>
+            <!-- PASO: Firmado correctamente -->
+            <div class="signing-step-content" id="signing-completed">
+                <div class="completed-content">
+                    <div class="success-animation">
+                        <div class="checkmark-circle">
+                            <div class="checkmark">✓</div>
+                        </div>
+                    </div>
+                    <h3 class="success-title"><?php _e('¡Contrato firmado exitosamente!', 'adhesion'); ?></h3>
+                    <p class="success-description">
+                        <?php _e('Tu contrato ha sido firmado digitalmente y está completamente procesado. Ya puedes acceder a tu copia firmada.', 'adhesion'); ?>
+                    </p>
+                    
+                    <!-- Acciones post-firma -->
+                    <div class="post-signing-actions">
+                        <?php if (!empty($contract['signed_document_path'])): ?>
+                            <a href="<?php echo esc_url($contract['signed_document_path']); ?>" 
+                               class="adhesion-btn adhesion-btn-success" 
+                               download
+                               target="_blank">
+                                <span class="dashicons dashicons-download"></span>
+                                <?php _e('Descargar Contrato Firmado', 'adhesion'); ?>
+                            </a>
+                        <?php endif; ?>
+                        
+                        <a href="<?php echo home_url('/mi-cuenta/'); ?>" class="adhesion-btn adhesion-btn-primary">
+                            <span class="dashicons dashicons-admin-home"></span>
+                            <?php _e('Ir a Mi Cuenta', 'adhesion'); ?>
+                        </a>
+                        
+                        <button type="button" id="send-copy-email-btn" class="adhesion-btn adhesion-btn-outline">
+                            <span class="dashicons dashicons-email"></span>
+                            <?php _e('Enviar copia por email', 'adhesion'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+        <?php else: ?>
+            <!-- PASO: Error o estado no válido -->
+            <div class="signing-step-content" id="signing-error">
+                <div class="error-content">
+                    <div class="error-icon">
+                        <span class="icon-large">❌</span>
+                    </div>
+                    <h3 class="error-title">
+                        <?php 
+                        if ($contract['status'] === 'declined') {
+                            _e('Contrato rechazado', 'adhesion');
+                        } elseif ($contract['payment_status'] !== 'completed') {
+                            _e('Pago requerido', 'adhesion');
+                        } else {
+                            _e('Error en el proceso de firma', 'adhesion');
+                        }
+                        ?>
+                    </h3>
+                    <p class="error-description">
+                        <?php 
+                        if ($contract['status'] === 'declined') {
+                            _e('El contrato ha sido rechazado durante el proceso de firma. Puedes iniciar un nuevo proceso si deseas continuar.', 'adhesion');
+                        } elseif ($contract['payment_status'] !== 'completed') {
+                            _e('Debes completar el pago antes de poder firmar el contrato.', 'adhesion');
+                        } else {
+                            _e('Ha ocurrido un error en el proceso de firma. Por favor, contacta con nosotros para resolverlo.', 'adhesion');
+                        }
+                        ?>
+                    </p>
+                    
+                    <!-- Acciones de error -->
+                    <div class="error-actions">
+                        <?php if ($contract['payment_status'] !== 'completed'): ?>
+                            <a href="<?php echo add_query_arg('contract_id', $contract_id, home_url('/pago/')); ?>" 
+                               class="adhesion-btn adhesion-btn-primary">
+                                <span class="dashicons dashicons-money"></span>
+                                <?php _e('Completar Pago', 'adhesion'); ?>
+                            </a>
+                        <?php elseif ($contract['status'] === 'declined'): ?>
+                            <a href="<?php echo home_url('/calculadora/'); ?>" 
+                               class="adhesion-btn adhesion-btn-primary">
+                                <span class="dashicons dashicons-calculator"></span>
+                                <?php _e('Nuevo Cálculo', 'adhesion'); ?>
+                            </a>
+                        <?php else: ?>
+                            <button type="button" id="retry-signing-btn" class="adhesion-btn adhesion-btn-primary">
+                                <span class="dashicons dashicons-update"></span>
+                                <?php _e('Reintentar Firma', 'adhesion'); ?>
+                            </button>
+                        <?php endif; ?>
+                        
+                        <a href="<?php echo home_url('/mi-cuenta/'); ?>" class="adhesion-btn adhesion-btn-outline">
+                            <?php _e('Volver a Mi Cuenta', 'adhesion'); ?>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- JavaScript específico para firma de contratos -->
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    
+    // Configuración global
+    window.adhesionSigningConfig = {
+        contractId: <?php echo $contract_id; ?>,
+        signingStep: '<?php echo $signing_step; ?>',
+        ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
+        nonce: '<?php echo wp_create_nonce('adhesion_nonce'); ?>',
+        returnUrl: '<?php echo esc_js($signing_config['return_url']); ?>',
+        messages: {
+            preparingSigning: '<?php echo esc_js(__('Preparando firma...', 'adhesion')); ?>',
+            signingError: '<?php echo esc_js(__('Error iniciando el proceso de firma.', 'adhesion')); ?>',
+            checkingStatus: '<?php echo esc_js(__('Verificando estado...', 'adhesion')); ?>',
             emailSent: '<?php echo esc_js(__('Email enviado correctamente.', 'adhesion')); ?>',
             emailError: '<?php echo esc_js(__('Error enviando email.', 'adhesion')); ?>',
             statusUpdated: '<?php echo esc_js(__('Estado actualizado.', 'adhesion')); ?>',
@@ -475,51 +899,6 @@
     font-weight: 600;
 }
 
-/* Resumen del pedido */
-.order-summary-section {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    padding: 20px;
-    margin-top: 20px;
-}
-
-.order-summary-section h4 {
-    margin: 0 0 15px 0;
-    color: #495057;
-}
-
-.materials-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.material-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.material-item:last-child {
-    border-bottom: none;
-}
-
-.material-name {
-    font-weight: 500;
-}
-
-.material-quantity {
-    color: #666;
-}
-
-.material-total {
-    font-weight: 600;
-    color: #28a745;
-}
-
 /* Contenido de pasos */
 .signing-content {
     background: white;
@@ -657,110 +1036,12 @@
     margin-bottom: 30px;
 }
 
-.signing-status-detail {
-    margin-bottom: 30px;
-}
-
-.status-steps {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 500px;
-    margin: 0 auto 30px;
-    position: relative;
-}
-
-.status-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 2;
-}
-
-.step-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #e2e4e7;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-
-.status-step.completed .step-icon {
-    background: #28a745;
-    color: white;
-}
-
-.status-step.active .step-icon {
-    background: #007cba;
-    color: white;
-}
-
-.spinner-small {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.step-text {
-    font-size: 0.9em;
-    color: #666;
-    text-align: center;
-}
-
-.status-step.active .step-text {
-    color: #007cba;
-    font-weight: 600;
-}
-
-.process-info {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    padding: 20px;
-    margin-bottom: 25px;
-    text-align: left;
-}
-
-.process-info p {
-    margin: 8px 0;
-}
-
 .progress-actions {
     display: flex;
     gap: 15px;
     justify-content: center;
     margin-bottom: 30px;
     flex-wrap: wrap;
-}
-
-.signing-help {
-    background: #e8f4fd;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: left;
-}
-
-.signing-help h4 {
-    margin: 0 0 15px 0;
-    color: #0c5460;
-}
-
-.signing-help ul {
-    margin: 0;
-    color: #0c5460;
-}
-
-.signing-help li {
-    margin-bottom: 8px;
 }
 
 /* Paso: Firmado correctamente */
@@ -814,130 +1095,12 @@
     margin-bottom: 30px;
 }
 
-.signed-contract-info {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 30px;
-}
-
-.signed-details {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.signed-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.signed-item:last-child {
-    border-bottom: none;
-}
-
-.signed-label {
-    font-weight: 600;
-    color: #495057;
-}
-
-.signed-value {
-    color: #23282d;
-}
-
 .post-signing-actions {
     display: flex;
     gap: 15px;
     justify-content: center;
     margin-bottom: 30px;
     flex-wrap: wrap;
-}
-
-.next-steps-signed {
-    background: #e8f4fd;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 30px;
-    text-align: left;
-}
-
-.next-steps-signed h4 {
-    margin: 0 0 20px 0;
-    color: #0c5460;
-}
-
-.steps-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.timeline-step {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-}
-
-.timeline-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #e9ecef;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2em;
-    flex-shrink: 0;
-}
-
-.timeline-step.completed .timeline-icon {
-    background: #28a745;
-    color: white;
-}
-
-.timeline-content h5 {
-    margin: 0 0 5px 0;
-    color: #23282d;
-}
-
-.timeline-content p {
-    margin: 0;
-    color: #666;
-    font-size: 0.9em;
-}
-
-.contact-support {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-}
-
-.contact-support h5 {
-    margin: 0 0 10px 0;
-    color: #23282d;
-}
-
-.contact-methods {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 15px;
-}
-
-.contact-methods span {
-    background: white;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #e2e4e7;
-    font-size: 0.9em;
 }
 
 /* Paso: Error */
@@ -968,38 +1131,6 @@
     justify-content: center;
     margin-bottom: 30px;
     flex-wrap: wrap;
-}
-
-.error-support {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.error-support h5 {
-    margin: 0 0 10px 0;
-    color: #721c24;
-}
-
-.error-support p {
-    margin: 0 0 15px 0;
-    color: #721c24;
-}
-
-.support-methods {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.support-methods span {
-    background: white;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #721c24;
 }
 
 /* Botones */
@@ -1136,27 +1267,6 @@
     color: #0c5460;
 }
 
-/* Error específico de firma */
-.signing-error {
-    text-align: center;
-    padding: 40px 20px;
-}
-
-.signing-error .error-icon {
-    font-size: 4em;
-    margin-bottom: 20px;
-}
-
-.signing-error h3 {
-    color: #dc3545;
-    margin-bottom: 15px;
-}
-
-.signing-error p {
-    color: #666;
-    margin-bottom: 30px;
-}
-
 /* Responsive design */
 @media (max-width: 768px) {
     .adhesion-signing-container {
@@ -1193,736 +1303,5 @@
         width: 100%;
         max-width: 300px;
     }
-    
-    .status-steps {
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .steps-timeline {
-        gap: 15px;
-    }
-    
-    .timeline-step {
-        flex-direction: column;
-        text-align: center;
-        gap: 10px;
-    }
-    
-    .contact-methods,
-    .support-methods {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .materials-summary {
-        font-size: 0.9em;
-    }
-    
-    .material-item {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
 }
-
-@media (max-width: 480px) {
-    .signing-title {
-        font-size: 1.8em;
-    }
-    
-    .ready-title,
-    .success-title {
-        font-size: 1.6em;
-    }
-    
-    .progress-title {
-        font-size: 1.5em;
-    }
-    
-    .contract-info,
-    .signing-content {
-        padding: 20px;
-    }
-    
-    .step-icon {
-        width: 35px;
-        height: 35px;
-    }
-    
-    .checkmark-circle {
-        width: 80px;
-        height: 80px;
-    }
-    
-    .checkmark {
-        font-size: 2.5em;
-    }
-    
-    .icon-large {
-        font-size: 3em;
-    }
-}
-
-/* Estados específicos para mejor UX */
-.status-indicator.pulsing {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-    100% {
-        opacity: 1;
-    }
-}
-
-/* Mejoras de accesibilidad */
-.adhesion-btn:focus,
-details summary:focus {
-    outline: 2px solid #007cba;
-    outline-offset: 2px;
-}
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-/* Animaciones adicionales */
-.signing-step-content {
-    animation: fadeInUp 0.5s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Print styles */
-@media print {
-    .ready-actions,
-    .progress-actions,
-    .post-signing-actions,
-    .error-actions {
-        display: none;
-    }
-    
-    .signing-header {
-        background: #f8f9fa !important;
-        color: #000 !important;
-        border: 1px solid #000;
-    }
-    
-    .contract-info {
-        border: 1px solid #000;
-    }
-    
-    .next-steps-signed,
-    .signing-help,
-    .contact-support {
-        background: #f8f9fa !important;
-        border: 1px solid #000 !important;
-        color: #000 !important;
-    }
-}
-</style><?php
-/**
- * Vista de firma de contratos con DocuSign
- * 
- * Esta vista maneja:
- * - Preparación de documentos para firma
- * - Integración con DocuSign
- * - Estados de firma (pendiente, firmado, rechazado)
- * - Descarga de documentos firmados
- * - Seguimiento del proceso
- */
-
-// Prevenir acceso directo
-if (!defined('ABSPATH')) {
-    exit;
-}
-
-// Verificar que el usuario esté logueado
-if (!is_user_logged_in()) {
-    echo '<div class="adhesion-notice adhesion-notice-error">';
-    echo '<p>' . __('Debes estar logueado para firmar contratos.', 'adhesion') . '</p>';
-    echo '<p><a href="' . wp_login_url(get_permalink()) . '" class="adhesion-btn adhesion-btn-primary">' . __('Iniciar Sesión', 'adhesion') . '</a></p>';
-    echo '</div>';
-    return;
-}
-
-// Verificar configuración de DocuSign
-if (!adhesion_is_docusign_configured()) {
-    echo '<div class="adhesion-notice adhesion-notice-error">';
-    echo '<p>' . __('La firma digital no está configurada. Contacta con el administrador.', 'adhesion') . '</p>';
-    echo '</div>';
-    return;
-}
-
-// Obtener datos necesarios
-$db = new Adhesion_Database();
-$user = wp_get_current_user();
-
-// Obtener ID del contrato desde parámetros
-$contract_id = isset($_GET['contract_id']) ? intval($_GET['contract_id']) : (isset($atts['contract_id']) ? intval($atts['contract_id']) : 0);
-
-// Variables para el proceso
-$contract = null;
-$calculation = null;
-$signing_step = 'loading'; // loading, ready, signing, signed, error
-
-// Obtener información del contrato
-if ($contract_id) {
-    $contract = $db->get_contract($contract_id);
-    if ($contract && $contract['user_id'] == $user->ID) {
-        // Obtener cálculo asociado si existe
-        if ($contract['calculation_id']) {
-            $calculation = $db->get_calculation($contract['calculation_id']);
-        }
-        
-        // Determinar paso según estado del contrato
-        switch ($contract['status']) {
-            case 'completed':
-                $signing_step = 'signed';
-                break;
-            case 'sent':
-            case 'pending_signature':
-                $signing_step = 'signing';
-                break;
-            case 'declined':
-            case 'voided':
-                $signing_step = 'error';
-                break;
-            default:
-                if ($contract['payment_status'] === 'completed') {
-                    $signing_step = 'ready';
-                } else {
-                    $signing_step = 'error';
-                }
-                break;
-        }
-    }
-} else {
-    // Si no hay contract_id, buscar contratos pendientes del usuario
-    $pending_contracts = $db->get_user_contracts($user->ID, array('completed_payment', 'pending_signature', 'sent'));
-    if (!empty($pending_contracts)) {
-        $contract = $pending_contracts[0];
-        $contract_id = $contract['id'];
-        $signing_step = $contract['status'] === 'completed' ? 'signed' : 'ready';
-    }
-}
-
-// Si no hay contrato válido, mostrar error
-if (!$contract) {
-    echo '<div class="adhesion-notice adhesion-notice-error">';
-    echo '<p>' . __('No se encontró un contrato válido para firmar.', 'adhesion') . '</p>';
-    echo '<p><a href="' . home_url('/mi-cuenta/') . '" class="adhesion-btn adhesion-btn-primary">' . __('Ir a Mi Cuenta', 'adhesion') . '</a></p>';
-    echo '</div>';
-    return;
-}
-
-// Configuración de la firma
-$signing_config = array(
-    'return_url' => add_query_arg(array('contract_id' => $contract_id, 'signed' => '1'), get_permalink()),
-    'timeout_minutes' => adhesion_get_option('signing_timeout', 30),
-    'reminder_days' => adhesion_get_option('reminder_days', 3)
-);
-?>
-
-<div class="adhesion-signing-container" id="adhesion-contract-signing">
-    
-    <!-- Header de firma -->
-    <div class="signing-header">
-        <h2 class="signing-title">
-            <span class="signing-icon">✍️</span>
-            <?php _e('Firma de Contrato', 'adhesion'); ?>
-        </h2>
-        
-        <!-- Estado del proceso -->
-        <div class="signing-status">
-            <div class="status-indicator status-<?php echo esc_attr($signing_step); ?>">
-                <?php
-                switch ($signing_step) {
-                    case 'ready':
-                        echo '<span class="status-icon">📋</span>';
-                        echo '<span class="status-text">' . __('Listo para firmar', 'adhesion') . '</span>';
-                        break;
-                    case 'signing':
-                        echo '<span class="status-icon">⏳</span>';
-                        echo '<span class="status-text">' . __('Pendiente de firma', 'adhesion') . '</span>';
-                        break;
-                    case 'signed':
-                        echo '<span class="status-icon">✅</span>';
-                        echo '<span class="status-text">' . __('Firmado correctamente', 'adhesion') . '</span>';
-                        break;
-                    case 'error':
-                        echo '<span class="status-icon">❌</span>';
-                        echo '<span class="status-text">' . __('Error en la firma', 'adhesion') . '</span>';
-                        break;
-                    default:
-                        echo '<span class="status-icon">🔄</span>';
-                        echo '<span class="status-text">' . __('Cargando...', 'adhesion') . '</span>';
-                        break;
-                }
-                ?>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mensajes de estado -->
-    <div id="signing-messages" class="adhesion-messages-container"></div>
-
-    <!-- Información del contrato -->
-    <div class="contract-info">
-        <h3 class="info-title">
-            <span class="info-icon">📄</span>
-            <?php _e('Información del contrato', 'adhesion'); ?>
-        </h3>
-        
-        <div class="contract-details">
-            <div class="details-grid">
-                <div class="detail-item">
-                    <span class="detail-label"><?php _e('Número de contrato:', 'adhesion'); ?></span>
-                    <span class="detail-value"><?php echo esc_html($contract['contract_number'] ?? 'Generando...'); ?></span>
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label"><?php _e('Cliente:', 'adhesion'); ?></span>
-                    <span class="detail-value"><?php echo esc_html($user->display_name); ?></span>
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label"><?php _e('Fecha de creación:', 'adhesion'); ?></span>
-                    <span class="detail-value"><?php echo adhesion_format_date($contract['created_at'], 'd/m/Y'); ?></span>
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label"><?php _e('Importe total:', 'adhesion'); ?></span>
-                    <span class="detail-value"><?php echo adhesion_format_price($contract['total_price'] ?? 0); ?></span>
-                </div>
-                
-                <?php if ($contract['payment_status'] === 'completed'): ?>
-                    <div class="detail-item">
-                        <span class="detail-label"><?php _e('Estado del pago:', 'adhesion'); ?></span>
-                        <span class="detail-value payment-completed">✅ <?php _e('Pagado', 'adhesion'); ?></span>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if (!empty($contract['signed_at'])): ?>
-                    <div class="detail-item">
-                        <span class="detail-label"><?php _e('Fecha de firma:', 'adhesion'); ?></span>
-                        <span class="detail-value"><?php echo adhesion_format_date($contract['signed_at'], 'd/m/Y H:i'); ?></span>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <!-- Resumen del pedido -->
-        <?php if ($calculation): ?>
-            <div class="order-summary-section">
-                <h4><?php _e('Resumen del pedido:', 'adhesion'); ?></h4>
-                <?php
-                $materials_data = json_decode($calculation['materials_data'], true);
-                if ($materials_data):
-                ?>
-                    <div class="materials-summary">
-                        <?php foreach ($materials_data as $material): ?>
-                            <div class="material-item">
-                                <span class="material-name"><?php echo esc_html(ucfirst($material['type'])); ?></span>
-                                <span class="material-quantity"><?php echo adhesion_format_tons($material['quantity']); ?></span>
-                                <span class="material-total"><?php echo adhesion_format_price($material['total']); ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
-    <!-- Contenido principal según el paso -->
-    <div class="signing-content">
-        
-        <?php if ($signing_step === 'ready'): ?>
-            <!-- PASO: Listo para firmar -->
-            <div class="signing-step-content" id="ready-to-sign">
-                <div class="ready-content">
-                    <div class="ready-icon">
-                        <span class="icon-large">📋</span>
-                    </div>
-                    <h3 class="ready-title"><?php _e('Contrato listo para firmar', 'adhesion'); ?></h3>
-                    <p class="ready-description">
-                        <?php _e('Tu pago ha sido procesado correctamente. Ahora puedes proceder a firmar el contrato digitalmente usando DocuSign.', 'adhesion'); ?>
-                    </p>
-                    
-                    <!-- Información importante -->
-                    <div class="signing-info">
-                        <h4><?php _e('Información importante:', 'adhesion'); ?></h4>
-                        <ul class="info-list">
-                            <li>🔒 <?php _e('La firma se realiza de forma segura a través de DocuSign', 'adhesion'); ?></li>
-                            <li>📧 <?php _e('Recibirás un email con el enlace para firmar', 'adhesion'); ?></li>
-                            <li>⏰ <?php printf(__('Tienes %d días para completar la firma', 'adhesion'), $signing_config['reminder_days']); ?></li>
-                            <li>📱 <?php _e('Puedes firmar desde cualquier dispositivo', 'adhesion'); ?></li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Acción principal -->
-                    <div class="ready-actions">
-                        <button type="button" id="start-signing-btn" class="adhesion-btn adhesion-btn-success adhesion-btn-large">
-                            <span class="btn-icon">✍️</span>
-                            <span class="btn-text"><?php _e('Firmar Contrato Ahora', 'adhesion'); ?></span>
-                            <span class="btn-loading" style="display: none;">
-                                <span class="spinner"></span>
-                                <?php _e('Preparando firma...', 'adhesion'); ?>
-                            </span>
-                        </button>
-                        
-                        <button type="button" id="send-email-btn" class="adhesion-btn adhesion-btn-outline">
-                            <span class="dashicons dashicons-email"></span>
-                            <?php _e('Enviar por email', 'adhesion'); ?>
-                        </button>
-                    </div>
-                    
-                    <!-- Información adicional -->
-                    <div class="additional-info">
-                        <details>
-                            <summary><?php _e('¿Qué sucede después de firmar?', 'adhesion'); ?></summary>
-                            <div class="details-content">
-                                <ol>
-                                    <li><?php _e('Recibirás una copia del contrato firmado por email', 'adhesion'); ?></li>
-                                    <li><?php _e('Nuestro equipo procesará tu pedido', 'adhesion'); ?></li>
-                                    <li><?php _e('Te contactaremos para coordinar la entrega', 'adhesion'); ?></li>
-                                    <li><?php _e('Podrás descargar el contrato desde tu área de cliente', 'adhesion'); ?></li>
-                                </ol>
-                            </div>
-                        </details>
-                    </div>
-                </div>
-            </div>
-            
-        <?php elseif ($signing_step === 'signing'): ?>
-            <!-- PASO: En proceso de firma -->
-            <div class="signing-step-content" id="signing-in-progress">
-                <div class="signing-progress">
-                    <div class="progress-icon">
-                        <div class="spinner-large"></div>
-                    </div>
-                    <h3 class="progress-title"><?php _e('Firma en proceso', 'adhesion'); ?></h3>
-                    <p class="progress-description">
-                        <?php _e('El contrato ha sido enviado para firma. Revisa tu email para continuar con el proceso.', 'adhesion'); ?>
-                    </p>
-                    
-                    <!-- Estado detallado -->
-                    <div class="signing-status-detail">
-                        <div class="status-steps">
-                            <div class="status-step completed">
-                                <span class="step-icon">✅</span>
-                                <span class="step-text"><?php _e('Contrato generado', 'adhesion'); ?></span>
-                            </div>
-                            <div class="status-step completed">
-                                <span class="step-icon">✅</span>
-                                <span class="step-text"><?php _e('Enviado a DocuSign', 'adhesion'); ?></span>
-                            </div>
-                            <div class="status-step active">
-                                <span class="step-icon">
-                                    <span class="spinner-small"></span>
-                                </span>
-                                <span class="step-text"><?php _e('Esperando firma', 'adhesion'); ?></span>
-                            </div>
-                            <div class="status-step">
-                                <span class="step-icon">⏳</span>
-                                <span class="step-text"><?php _e('Contrato completado', 'adhesion'); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Información del proceso -->
-                    <div class="process-info">
-                        <?php if (!empty($contract['docusign_envelope_id'])): ?>
-                            <p><strong><?php _e('ID de sobre:', 'adhesion'); ?></strong> <?php echo esc_html($contract['docusign_envelope_id']); ?></p>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($contract['sent_at'])): ?>
-                            <p><strong><?php _e('Enviado el:', 'adhesion'); ?></strong> <?php echo adhesion_format_date($contract['sent_at'], 'd/m/Y H:i'); ?></p>
-                        <?php endif; ?>
-                        
-                        <p><strong><?php _e('Email:', 'adhesion'); ?></strong> <?php echo esc_html($user->user_email); ?></p>
-                    </div>
-                    
-                    <!-- Acciones disponibles -->
-                    <div class="progress-actions">
-                        <button type="button" id="check-status-btn" class="adhesion-btn adhesion-btn-primary">
-                            <span class="dashicons dashicons-update"></span>
-                            <?php _e('Verificar Estado', 'adhesion'); ?>
-                        </button>
-                        
-                        <button type="button" id="resend-email-btn" class="adhesion-btn adhesion-btn-outline">
-                            <span class="dashicons dashicons-email-alt"></span>
-                            <?php _e('Reenviar Email', 'adhesion'); ?>
-                        </button>
-                        
-                        <?php if (!empty($contract['docusign_envelope_id'])): ?>
-                            <button type="button" id="open-docusign-btn" class="adhesion-btn adhesion-btn-secondary">
-                                <span class="dashicons dashicons-external"></span>
-                                <?php _e('Abrir en DocuSign', 'adhesion'); ?>
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Ayuda -->
-                    <div class="signing-help">
-                        <h4><?php _e('¿No recibes el email?', 'adhesion'); ?></h4>
-                        <ul>
-                            <li><?php _e('Revisa tu carpeta de spam o correo no deseado', 'adhesion'); ?></li>
-                            <li><?php _e('Verifica que el email sea correcto:', 'adhesion'); ?> <strong><?php echo esc_html($user->user_email); ?></strong></li>
-                            <li><?php _e('Pulsa "Reenviar Email" si no lo encuentras', 'adhesion'); ?></li>
-                            <li><?php _e('Contacta con nosotros si continúas teniendo problemas', 'adhesion'); ?></li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <!-- Auto-refresh del estado -->
-                <script>
-                    // Verificar estado cada 10 segundos
-                    let statusCheckInterval = setInterval(function() {
-                        checkSigningStatus();
-                    }, 10000);
-                    
-                    function checkSigningStatus() {
-                        jQuery.ajax({
-                            url: '<?php echo admin_url('admin-ajax.php'); ?>',
-                            type: 'POST',
-                            data: {
-                                action: 'adhesion_check_signing_status',
-                                nonce: '<?php echo wp_create_nonce('adhesion_nonce'); ?>',
-                                contract_id: <?php echo $contract_id; ?>
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    if (response.data.status === 'completed') {
-                                        clearInterval(statusCheckInterval);
-                                        window.location.reload(); // Recargar para mostrar firma completada
-                                    } else if (response.data.status === 'declined') {
-                                        clearInterval(statusCheckInterval);
-                                        showSigningError('El contrato ha sido rechazado');
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    
-                    function showSigningError(message) {
-                        document.getElementById('signing-in-progress').innerHTML = 
-                            '<div class="signing-error">' +
-                            '<div class="error-icon">❌</div>' +
-                            '<h3>Error en la firma</h3>' +
-                            '<p>' + message + '</p>' +
-                            '<a href="<?php echo get_permalink(); ?>" class="adhesion-btn adhesion-btn-primary">Intentar de nuevo</a>' +
-                            '</div>';
-                    }
-                </script>
-            </div>
-            
-        <?php elseif ($signing_step === 'signed'): ?>
-            <!-- PASO: Firmado correctamente -->
-            <div class="signing-step-content" id="signing-completed">
-                <div class="completed-content">
-                    <div class="success-animation">
-                        <div class="checkmark-circle">
-                            <div class="checkmark">✓</div>
-                        </div>
-                    </div>
-                    <h3 class="success-title"><?php _e('¡Contrato firmado exitosamente!', 'adhesion'); ?></h3>
-                    <p class="success-description">
-                        <?php _e('Tu contrato ha sido firmado digitalmente y está completamente procesado. Ya puedes acceder a tu copia firmada.', 'adhesion'); ?>
-                    </p>
-                    
-                    <!-- Información del contrato firmado -->
-                    <div class="signed-contract-info">
-                        <div class="signed-details">
-                            <div class="signed-item">
-                                <span class="signed-label"><?php _e('Firmado el:', 'adhesion'); ?></span>
-                                <span class="signed-value"><?php echo adhesion_format_date($contract['signed_at'], 'd/m/Y H:i'); ?></span>
-                            </div>
-                            
-                            <?php if (!empty($contract['signed_document_path'])): ?>
-                                <div class="signed-item">
-                                    <span class="signed-label"><?php _e('Documento:', 'adhesion'); ?></span>
-                                    <span class="signed-value"><?php _e('Disponible para descarga', 'adhesion'); ?></span>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <div class="signed-item">
-                                <span class="signed-label"><?php _e('Estado:', 'adhesion'); ?></span>
-                                <span class="signed-value status-completed">✅ <?php _e('Completado', 'adhesion'); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Acciones post-firma -->
-                    <div class="post-signing-actions">
-                        <?php if (!empty($contract['signed_document_path'])): ?>
-                            <a href="<?php echo esc_url($contract['signed_document_path']); ?>" 
-                               class="adhesion-btn adhesion-btn-success" 
-                               download
-                               target="_blank">
-                                <span class="dashicons dashicons-download"></span>
-                                <?php _e('Descargar Contrato Firmado', 'adhesion'); ?>
-                            </a>
-                        <?php endif; ?>
-                        
-                        <a href="<?php echo home_url('/mi-cuenta/'); ?>" class="adhesion-btn adhesion-btn-primary">
-                            <span class="dashicons dashicons-admin-home"></span>
-                            <?php _e('Ir a Mi Cuenta', 'adhesion'); ?>
-                        </a>
-                        
-                        <button type="button" id="send-copy-email-btn" class="adhesion-btn adhesion-btn-outline">
-                            <span class="dashicons dashicons-email"></span>
-                            <?php _e('Enviar copia por email', 'adhesion'); ?>
-                        </button>
-                    </div>
-                    
-                    <!-- Próximos pasos -->
-                    <div class="next-steps-signed">
-                        <h4><?php _e('¿Qué sigue ahora?', 'adhesion'); ?></h4>
-                        <div class="steps-timeline">
-                            <div class="timeline-step completed">
-                                <span class="timeline-icon">✅</span>
-                                <div class="timeline-content">
-                                    <h5><?php _e('Contrato firmado', 'adhesion'); ?></h5>
-                                    <p><?php _e('Tu contrato ha sido firmado digitalmente', 'adhesion'); ?></p>
-                                </div>
-                            </div>
-                            <div class="timeline-step">
-                                <span class="timeline-icon">📋</span>
-                                <div class="timeline-content">
-                                    <h5><?php _e('Procesamiento del pedido', 'adhesion'); ?></h5>
-                                    <p><?php _e('Nuestro equipo preparará tu pedido', 'adhesion'); ?></p>
-                                </div>
-                            </div>
-                            <div class="timeline-step">
-                                <span class="timeline-icon">🚚</span>
-                                <div class="timeline-content">
-                                    <h5><?php _e('Coordinación de entrega', 'adhesion'); ?></h5>
-                                    <p><?php _e('Te contactaremos para organizar la entrega', 'adhesion'); ?></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Información de contacto -->
-                    <div class="contact-support">
-                        <h5><?php _e('¿Necesitas ayuda?', 'adhesion'); ?></h5>
-                        <p><?php _e('Si tienes alguna pregunta sobre tu contrato o pedido:', 'adhesion'); ?></p>
-                        <div class="contact-methods">
-                            <span>📞 <?php echo adhesion_get_option('support_phone', '900 123 456'); ?></span>
-                            <span>📧 <?php echo adhesion_get_option('support_email', get_option('admin_email')); ?></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-        <?php else: ?>
-            <!-- PASO: Error o estado no válido -->
-            <div class="signing-step-content" id="signing-error">
-                <div class="error-content">
-                    <div class="error-icon">
-                        <span class="icon-large">❌</span>
-                    </div>
-                    <h3 class="error-title">
-                        <?php 
-                        if ($contract['status'] === 'declined') {
-                            _e('Contrato rechazado', 'adhesion');
-                        } elseif ($contract['payment_status'] !== 'completed') {
-                            _e('Pago requerido', 'adhesion');
-                        } else {
-                            _e('Error en el proceso de firma', 'adhesion');
-                        }
-                        ?>
-                    </h3>
-                    <p class="error-description">
-                        <?php 
-                        if ($contract['status'] === 'declined') {
-                            _e('El contrato ha sido rechazado durante el proceso de firma. Puedes iniciar un nuevo proceso si deseas continuar.', 'adhesion');
-                        } elseif ($contract['payment_status'] !== 'completed') {
-                            _e('Debes completar el pago antes de poder firmar el contrato.', 'adhesion');
-                        } else {
-                            _e('Ha ocurrido un error en el proceso de firma. Por favor, contacta con nosotros para resolverlo.', 'adhesion');
-                        }
-                        ?>
-                    </p>
-                    
-                    <!-- Acciones de error -->
-                    <div class="error-actions">
-                        <?php if ($contract['payment_status'] !== 'completed'): ?>
-                            <a href="<?php echo add_query_arg('contract_id', $contract_id, home_url('/pago/')); ?>" 
-                               class="adhesion-btn adhesion-btn-primary">
-                                <span class="dashicons dashicons-money"></span>
-                                <?php _e('Completar Pago', 'adhesion'); ?>
-                            </a>
-                        <?php elseif ($contract['status'] === 'declined'): ?>
-                            <a href="<?php echo home_url('/calculadora/'); ?>" 
-                               class="adhesion-btn adhesion-btn-primary">
-                                <span class="dashicons dashicons-calculator"></span>
-                                <?php _e('Nuevo Cálculo', 'adhesion'); ?>
-                            </a>
-                        <?php else: ?>
-                            <button type="button" id="retry-signing-btn" class="adhesion-btn adhesion-btn-primary">
-                                <span class="dashicons dashicons-update"></span>
-                                <?php _e('Reintentar Firma', 'adhesion'); ?>
-                            </button>
-                        <?php endif; ?>
-                        
-                        <a href="<?php echo home_url('/mi-cuenta/'); ?>" class="adhesion-btn adhesion-btn-outline">
-                            <?php _e('Volver a Mi Cuenta', 'adhesion'); ?>
-                        </a>
-                    </div>
-                    
-                    <!-- Información de soporte -->
-                    <div class="error-support">
-                        <h5><?php _e('¿Necesitas ayuda?', 'adhesion'); ?></h5>
-                        <p><?php _e('Si el problema persiste, contacta con nuestro equipo de soporte:', 'adhesion'); ?></p>
-                        <div class="support-methods">
-                            <span>📞 <?php echo adhesion_get_option('support_phone', '900 123 456'); ?></span>
-                            <span>📧 <?php echo adhesion_get_option('support_email', get_option('admin_email')); ?></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- JavaScript específico para firma de contratos -->
-<script type="text/javascript">
-jQuery(document).ready(function($) {
-    
-    // Configuración global
-    window.adhesionSigningConfig = {
-        contractId: <?php echo $contract_id; ?>,
-        signingStep: '<?php echo $signing_step; ?>',
-        ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
-        nonce: '<?php echo wp_create_nonce('adhesion_nonce'); ?>',
-        returnUrl: '<?php echo esc_js($signing_config['return_url']); ?>',
-        messages: {
-            preparingSigning: '<?php echo esc_js(__('Preparando firma...', 'adhesion')); ?>',
-            signingError: '<?php echo esc_js(__('Error iniciando el proceso de firma.', 'adhesion')); ?>',
-            checkingStatus: '<?php echo esc_js(__('Verificando estado...', 'adhesion')); ?>',
-            emailSent: '<?php echo esc_js(__('Email
+</style>

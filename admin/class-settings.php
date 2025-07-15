@@ -39,6 +39,9 @@ class Adhesion_Settings {
      * Inicializar hooks
      */
     private function init_hooks() {
+        // Registrar configuraciones de WordPress
+        add_action('admin_init', array($this, 'register_settings'));
+        
         // AJAX para pruebas de configuración
         add_action('wp_ajax_adhesion_test_redsys', array($this, 'test_redsys_connection'));
         add_action('wp_ajax_adhesion_test_docusign', array($this, 'test_docusign_connection'));
@@ -52,6 +55,62 @@ class Adhesion_Settings {
         
         // Programar tareas de verificación
         add_action('adhesion_verify_apis', array($this, 'verify_api_connections'));
+    }
+    
+    /**
+     * Registrar configuraciones del plugin
+     */
+    public function register_settings() {
+        register_setting('adhesion_settings', 'adhesion_settings', array(
+            'sanitize_callback' => array($this, 'sanitize_settings')
+        ));
+    }
+    
+    /**
+     * Sanitizar configuraciones
+     */
+    public function sanitize_settings($settings) {
+        $sanitized = array();
+        
+        // Sanitizar configuraciones de Redsys
+        $sanitized['redsys_merchant_code'] = sanitize_text_field($settings['redsys_merchant_code'] ?? '');
+        $sanitized['redsys_terminal'] = sanitize_text_field($settings['redsys_terminal'] ?? '001');
+        $sanitized['redsys_secret_key'] = sanitize_text_field($settings['redsys_secret_key'] ?? '');
+        $sanitized['redsys_environment'] = in_array($settings['redsys_environment'] ?? 'test', array('test', 'production')) ? $settings['redsys_environment'] : 'test';
+        $sanitized['redsys_currency'] = sanitize_text_field($settings['redsys_currency'] ?? '978');
+        
+        // Sanitizar configuraciones de DocuSign
+        $sanitized['docusign_integration_key'] = sanitize_text_field($settings['docusign_integration_key'] ?? '');
+        $sanitized['docusign_secret_key'] = sanitize_text_field($settings['docusign_secret_key'] ?? '');
+        $sanitized['docusign_account_id'] = sanitize_text_field($settings['docusign_account_id'] ?? '');
+        $sanitized['docusign_environment'] = in_array($settings['docusign_environment'] ?? 'demo', array('demo', 'production')) ? $settings['docusign_environment'] : 'demo';
+        
+        // Sanitizar configuraciones de transferencia bancaria
+        $sanitized['bank_transfer_iban'] = sanitize_text_field($settings['bank_transfer_iban'] ?? '');
+        $sanitized['bank_transfer_bank_name'] = sanitize_text_field($settings['bank_transfer_bank_name'] ?? '');
+        $sanitized['bank_transfer_instructions'] = wp_kses_post($settings['bank_transfer_instructions'] ?? '');
+        
+        // Sanitizar configuraciones generales
+        $sanitized['calculator_enabled'] = isset($settings['calculator_enabled']) ? '1' : '0';
+        $sanitized['auto_create_users'] = isset($settings['auto_create_users']) ? '1' : '0';
+        $sanitized['email_notifications'] = isset($settings['email_notifications']) ? '1' : '0';
+        $sanitized['contract_auto_send'] = isset($settings['contract_auto_send']) ? '1' : '0';
+        $sanitized['require_payment'] = isset($settings['require_payment']) ? '1' : '0';
+        
+        // Sanitizar configuraciones de email
+        $sanitized['admin_email'] = sanitize_email($settings['admin_email'] ?? get_option('admin_email'));
+        $sanitized['email_from_name'] = sanitize_text_field($settings['email_from_name'] ?? get_bloginfo('name'));
+        $sanitized['email_from_address'] = sanitize_email($settings['email_from_address'] ?? get_option('admin_email'));
+        
+        return $sanitized;
+    }
+
+    /**
+     * Mostrar página principal de configuraciones
+     */
+    public function display_page() {
+        // Cargar la vista
+        include ADHESION_PLUGIN_PATH . 'admin/partials/settings-display.php';
     }
     
     /**
@@ -168,40 +227,6 @@ class Adhesion_Settings {
         }
         
         return $errors;
-    }
-    
-    /**
-     * Sanitizar configuraciones completas
-     */
-    public function sanitize_settings($settings) {
-        $sanitized = array();
-        
-        // Configuraciones de Redsys
-        $sanitized['redsys_merchant_code'] = sanitize_text_field($settings['redsys_merchant_code'] ?? '');
-        $sanitized['redsys_terminal'] = sanitize_text_field($settings['redsys_terminal'] ?? '001');
-        $sanitized['redsys_secret_key'] = sanitize_text_field($settings['redsys_secret_key'] ?? '');
-        $sanitized['redsys_environment'] = in_array($settings['redsys_environment'] ?? 'test', array('test', 'production')) ? $settings['redsys_environment'] : 'test';
-        $sanitized['redsys_currency'] = sanitize_text_field($settings['redsys_currency'] ?? '978');
-        
-        // Configuraciones de DocuSign
-        $sanitized['docusign_integration_key'] = sanitize_text_field($settings['docusign_integration_key'] ?? '');
-        $sanitized['docusign_secret_key'] = sanitize_text_field($settings['docusign_secret_key'] ?? '');
-        $sanitized['docusign_account_id'] = sanitize_text_field($settings['docusign_account_id'] ?? '');
-        $sanitized['docusign_environment'] = in_array($settings['docusign_environment'] ?? 'demo', array('demo', 'production')) ? $settings['docusign_environment'] : 'demo';
-        
-        // Configuraciones generales (checkboxes)
-        $sanitized['calculator_enabled'] = isset($settings['calculator_enabled']) ? '1' : '0';
-        $sanitized['auto_create_users'] = isset($settings['auto_create_users']) ? '1' : '0';
-        $sanitized['email_notifications'] = isset($settings['email_notifications']) ? '1' : '0';
-        $sanitized['contract_auto_send'] = isset($settings['contract_auto_send']) ? '1' : '0';
-        $sanitized['require_payment'] = isset($settings['require_payment']) ? '1' : '0';
-        
-        // Configuraciones de email
-        $sanitized['admin_email'] = sanitize_email($settings['admin_email'] ?? get_option('admin_email'));
-        $sanitized['email_from_name'] = sanitize_text_field($settings['email_from_name'] ?? get_bloginfo('name'));
-        $sanitized['email_from_address'] = sanitize_email($settings['email_from_address'] ?? get_option('admin_email'));
-        
-        return $sanitized;
     }
     
     /**
@@ -586,4 +611,5 @@ class Adhesion_Settings {
         
         return update_option('adhesion_settings', $sanitized_settings);
     }
+   
 }

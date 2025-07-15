@@ -142,13 +142,6 @@ class Adhesion_Public {
      * Assets específicos para calculadora
      */
     private function enqueue_calculator_assets() {
-        wp_enqueue_script(
-            'adhesion-calculator',
-            ADHESION_PLUGIN_URL . 'assets/js/calculator.js',
-            array('jquery'),
-            ADHESION_PLUGIN_VERSION,
-            true
-        );
         
         // Localizar precios de materiales
         $materials = $this->db->get_calculator_prices();

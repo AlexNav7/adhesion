@@ -199,7 +199,7 @@ class Adhesion_Database {
     /**
      * Crear un nuevo contrato
      */
-    public function create_contract($user_id, $calculation_id = null, $client_data = array()) {
+    public function create_contract($user_id, $calculation_id = null, $client_data = array(), $status = 'pending') {
         // Generar número de contrato único
         $contract_number = $this->generate_contract_number();
         
@@ -207,7 +207,7 @@ class Adhesion_Database {
             'user_id' => $user_id,
             'calculation_id' => $calculation_id,
             'contract_number' => $contract_number,
-            'status' => 'pending',
+            'status' => $status,
             'client_data' => json_encode($client_data),
             'payment_status' => 'pending'
         );
@@ -306,6 +306,31 @@ class Adhesion_Database {
         }
         
         return $results;
+    }
+    
+    /**
+     * Obtener último contrato del usuario
+     */
+    public function get_user_latest_contract($user_id) {
+        $result = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT c.*, calc.total_price 
+                 FROM {$this->table_contracts} c
+                 LEFT JOIN {$this->table_calculations} calc ON c.calculation_id = calc.id
+                 WHERE c.user_id = %d
+                 ORDER BY c.created_at DESC 
+                 LIMIT 1",
+                $user_id
+            ),
+            ARRAY_A
+        );
+        
+        // Decodificar datos JSON si existe
+        if ($result && !empty($result['client_data'])) {
+            $result['client_data'] = json_decode($result['client_data'], true);
+        }
+        
+        return $result;
     }
     
     /**

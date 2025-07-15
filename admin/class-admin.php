@@ -89,14 +89,6 @@ class Adhesion_Admin {
         require_once ADHESION_PLUGIN_PATH . 'admin/class-calculations-list.php';
         require_once ADHESION_PLUGIN_PATH . 'admin/class-prices.php';
                 
-        // // Inicializar solo cuando sea necesario
-        // if (isset($_GET['page']) && strpos($_GET['page'], 'adhesion') === 0) {
-        //     new Adhesion_Settings();
-        //     new Adhesion_Documents();
-        //     new Adhesion_Users_List();
-        //     new Adhesion_Contracts_List();
-        //     new Adhesion_Calculations_List();
-        // }
     }
     
     /**
@@ -246,8 +238,18 @@ class Adhesion_Admin {
      * Mostrar página de configuración
      */
     public function display_settings() {
-        include ADHESION_PLUGIN_PATH . 'admin/partials/settings-display.php';
+        $settings_manager = new Adhesion_Settings();
+        $settings_manager->display_page();
     }
+
+    /**
+     * Mostrar página de gestión de precios
+     */
+    public function display_prices() {
+        $prices_manager = new Adhesion_Prices();
+        $prices_manager->display_page();
+    }
+
     
     /**
      * Agregar widgets al dashboard de WordPress
@@ -469,9 +471,6 @@ class Adhesion_Admin {
     public function admin_init() {
         // Procesar acciones del admin
         $this->process_admin_actions();
-        
-        // Registrar configuraciones
-        $this->register_settings();
     }
     
     /**
@@ -540,40 +539,6 @@ class Adhesion_Admin {
         exit;
     }
     
-    /**
-     * Registrar configuraciones del plugin
-     */
-    private function register_settings() {
-        register_setting('adhesion_settings', 'adhesion_settings', array(
-            'sanitize_callback' => array($this, 'sanitize_settings')
-        ));
-    }
-    
-    /**
-     * Sanitizar configuraciones
-     */
-    public function sanitize_settings($settings) {
-        $sanitized = array();
-        
-        // Sanitizar configuraciones de Redsys
-        $sanitized['redsys_merchant_code'] = sanitize_text_field($settings['redsys_merchant_code'] ?? '');
-        $sanitized['redsys_terminal'] = sanitize_text_field($settings['redsys_terminal'] ?? '001');
-        $sanitized['redsys_secret_key'] = sanitize_text_field($settings['redsys_secret_key'] ?? '');
-        $sanitized['redsys_environment'] = in_array($settings['redsys_environment'] ?? 'test', array('test', 'production')) ? $settings['redsys_environment'] : 'test';
-        
-        // Sanitizar configuraciones de DocuSign
-        $sanitized['docusign_integration_key'] = sanitize_text_field($settings['docusign_integration_key'] ?? '');
-        $sanitized['docusign_secret_key'] = sanitize_text_field($settings['docusign_secret_key'] ?? '');
-        $sanitized['docusign_account_id'] = sanitize_text_field($settings['docusign_account_id'] ?? '');
-        $sanitized['docusign_environment'] = in_array($settings['docusign_environment'] ?? 'demo', array('demo', 'production')) ? $settings['docusign_environment'] : 'demo';
-        
-        // Sanitizar configuraciones generales
-        $sanitized['calculator_enabled'] = isset($settings['calculator_enabled']) ? '1' : '0';
-        $sanitized['auto_create_users'] = isset($settings['auto_create_users']) ? '1' : '0';
-        $sanitized['email_notifications'] = isset($settings['email_notifications']) ? '1' : '0';
-        
-        return $sanitized;
-    }
 
 
     /**
@@ -665,13 +630,6 @@ class Adhesion_Admin {
         }
     }
 
-    /**
-     * Mostrar página de gestión de precios
-     */
-    public function display_prices() {
-        $prices_manager = new Adhesion_Prices();
-        $prices_manager->display_page();
-    }
 
 
 

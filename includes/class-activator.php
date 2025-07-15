@@ -123,10 +123,7 @@ class Adhesion_Activator {
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
                 user_id bigint(20) NOT NULL,
                 calculation_data longtext NOT NULL,
-                material_data longtext,
                 total_price decimal(10,2) NOT NULL DEFAULT 0.00,
-                price_per_ton decimal(8,2) DEFAULT 0.00,
-                total_tons decimal(8,2) DEFAULT 0.00,
                 status varchar(20) DEFAULT 'active',
                 created_at datetime DEFAULT CURRENT_TIMESTAMP,
                 updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -217,10 +214,7 @@ class Adhesion_Activator {
                 `id` mediumint(9) NOT NULL AUTO_INCREMENT,
                 `user_id` bigint(20) NOT NULL,
                 `calculation_data` longtext NOT NULL,
-                `material_data` longtext,
                 `total_price` decimal(10,2) NOT NULL DEFAULT 0.00,
-                `price_per_ton` decimal(8,2) DEFAULT 0.00,
-                `total_tons` decimal(8,2) DEFAULT 0.00,
                 `status` varchar(20) DEFAULT 'active',
                 `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
                 `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -265,17 +259,6 @@ class Adhesion_Activator {
                 KEY `document_type` (`document_type`)
             ) {$charset_collate}",
             
-            'adhesion_settings' => "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}adhesion_settings` (
-                `id` mediumint(9) NOT NULL AUTO_INCREMENT,
-                `setting_key` varchar(100) NOT NULL,
-                `setting_value` longtext,
-                `setting_type` varchar(20) DEFAULT 'string',
-                `is_encrypted` tinyint(1) DEFAULT 0,
-                `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-                `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (`id`),
-                UNIQUE KEY `setting_key` (`setting_key`)
-            ) {$charset_collate}",
             
             'adhesion_calculator_prices' => "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}adhesion_calculator_prices` (
                 `id` mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -346,7 +329,6 @@ class Adhesion_Activator {
             $wpdb->prefix . 'adhesion_calculations',
             $wpdb->prefix . 'adhesion_contracts',
             $wpdb->prefix . 'adhesion_documents',
-            $wpdb->prefix . 'adhesion_settings',
             $wpdb->prefix . 'adhesion_calculator_prices',
             $wpdb->prefix . 'adhesion_ubica_prices',          
             $wpdb->prefix . 'adhesion_reinicia_prices' 
@@ -463,8 +445,7 @@ class Adhesion_Activator {
             array('title' => 'Calculadora de Presupuesto', 'content' => '[adhesion_calculator]', 'slug' => 'calculadora-presupuesto'),
             array('title' => 'Mi Cuenta', 'content' => '[adhesion_account]', 'slug' => 'mi-cuenta'),
             array('title' => 'Registro', 'content' => '[adhesion_register]', 'slug' => 'registro'),
-            array('title' => 'Proceso de Pago', 'content' => '[adhesion_payment]', 'slug' => 'proceso-pago'),
-            array('title' => 'Firma de Contratos', 'content' => '[adhesion_contract_signing]', 'slug' => 'firma-contratos')
+            array('title' => 'Formulario adhesion', 'content' => '[adhesion_contract_form]', 'slug' => 'formulario-adhesion')
         );
         
         foreach ($pages as $page_data) {

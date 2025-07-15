@@ -38,7 +38,6 @@ try {
         $wpdb->prefix . 'adhesion_calculations',
         $wpdb->prefix . 'adhesion_contracts',
         $wpdb->prefix . 'adhesion_documents',
-        $wpdb->prefix . 'adhesion_settings',
         $wpdb->prefix . 'adhesion_calculator_prices'
     );
     

@@ -1,13 +1,8 @@
 <?php
 /**
- * Vista de la calculadora de presupuestos
+ * Nueva vista de la calculadora UBICA
  * 
- * Esta vista maneja:
- * - Formulario interactivo de materiales
- * - Cálculos en tiempo real
- * - Visualización de precios y descuentos
- * - Guardado de cálculos
- * - Responsive design
+ * Interfaz moderna basada en tabla con resumen lateral
  */
 
 // Prevenir acceso directo
@@ -24,1159 +19,1080 @@ if (!is_user_logged_in()) {
     return;
 }
 
-// Obtener datos necesarios
-$db = new Adhesion_Database();
-$materials = $db->get_calculator_prices();
-$user = wp_get_current_user();
+// Obtener materiales UBICA desde la base de datos
+$ubica_repository = new Adhesion_Ubica_Prices_Repository();
+$materials = $ubica_repository->get_active_prices();
 
-// Filtrar solo materiales activos
-$active_materials = array_filter($materials, function($material) {
-    return $material['is_active'];
-});
+// Si no hay materiales, mostrar mensaje
+if (empty($materials)) {
+    echo '<div class="adhesion-notice adhesion-notice-warning">';
+    echo '<p>' . __('No hay materiales UBICA disponibles. Contacta con el administrador.', 'adhesion') . '</p>';
+    echo '</div>';
+    return;
+}
 
-// Configuración de la calculadora
-$calculator_config = array(
-    'tax_rate' => adhesion_get_option('tax_rate', 21),
-    'currency' => adhesion_get_option('currency', 'EUR'),
-    'minimum_order' => adhesion_get_option('minimum_order', 0),
-    'max_quantity_per_material' => 1000,
-    'apply_discounts' => adhesion_get_option('apply_discounts', true)
-);
+// Verificar si hay un cálculo a cargar
+$calculation_to_load = null;
+$calc_id = isset($_GET['calc_id']) ? intval($_GET['calc_id']) : 0;
+
+if ($calc_id > 0) {
+    // Cargar el cálculo existente
+    $db = new Adhesion_Database();
+    $calculation_to_load = $db->get_calculation($calc_id);
+    
+    // Verificar que el cálculo pertenece al usuario actual
+    if ($calculation_to_load && $calculation_to_load['user_id'] != get_current_user_id()) {
+        // El cálculo no pertenece al usuario actual, no permitir carga
+        $calculation_to_load = null;
+        echo '<div class="adhesion-notice adhesion-notice-error">';
+        echo '<p>' . __('No tienes permisos para cargar este cálculo.', 'adhesion') . '</p>';
+        echo '</div>';
+    } else if ($calculation_to_load) {
+        // Mostrar mensaje de carga exitosa
+        echo '<div class="adhesion-notice adhesion-notice-success">';
+        echo '<p>' . sprintf(__('Cálculo #%d cargado correctamente.', 'adhesion'), $calc_id) . '</p>';
+        echo '</div>';
+    } else {
+        // Cálculo no encontrado
+        echo '<div class="adhesion-notice adhesion-notice-error">';
+        echo '<p>' . __('No se encontró el cálculo solicitado.', 'adhesion') . '</p>';
+        echo '</div>';
+    }
+}
 ?>
 
-<div class="adhesion-calculator-container" id="adhesion-calculator">
+<div class="ubica-calculator-container">
     
-    <!-- Header de la calculadora -->
-
-
-    <!-- Mensajes de estado -->
-    <div id="adhesion-calculator-messages" class="adhesion-messages-container"></div>
-
-    <!-- Formulario de la calculadora -->
-    <form id="adhesion-calculator-form" class="adhesion-calculator-form">
+    <!-- Contenedor principal con tabla y resumen -->
+    <div class="calculator-main-content">
         
-        <!-- Información del usuario -->
-
-
-        <!-- Sección de materiales -->
-        <div class="calculator-materials-section">
-            <h3 class="section-title">
-                <span class="section-icon">🏗️</span>
-                <?php _e('Selecciona tus materiales', 'adhesion'); ?>
-            </h3>
-            
-            <div class="materials-container" id="materials-container">
-                
-                <?php if (empty($active_materials)): ?>
-                    <div class="no-materials-message">
-                        <p><?php _e('No hay materiales disponibles en este momento. Contacta con el administrador.', 'adhesion'); ?></p>
-                    </div>
-                <?php else: ?>
-                    
-                    <!-- Plantilla de material (se clona con JavaScript) -->
-                    <div class="material-row-template" style="display: none;">
-                        <div class="material-row" data-row-index="0">
-                            <div class="material-row-header">
-                                <h4 class="material-row-title"><?php _e('Material', 'adhesion'); ?> <span class="material-number">1</span></h4>
-                                <button type="button" class="remove-material-btn" title="<?php _e('Eliminar material', 'adhesion'); ?>">
-                                    <span class="dashicons dashicons-trash"></span>
-                                </button>
-                            </div>
-                            
-                            <div class="material-row-content">
-                                <div class="form-grid">
-                                    
-                                    <!-- Selector de material -->
-                                    <div class="form-group">
-                                        <label for="material_type_0"><?php _e('Tipo de Material', 'adhesion'); ?> *</label>
-                                        <select name="materials[0][type]" id="material_type_0" class="material-type-select" required>
-                                            <option value=""><?php _e('Selecciona un material...', 'adhesion'); ?></option>
-                                            <?php foreach ($active_materials as $material): ?>
-                                                <option value="<?php echo esc_attr($material['material_type']); ?>" 
-                                                        data-price="<?php echo esc_attr($material['price_per_ton']); ?>"
-                                                        data-minimum="<?php echo esc_attr($material['minimum_quantity']); ?>"
-                                                        data-description="<?php echo esc_attr($material['description'] ?? ''); ?>">
-                                                    <?php echo esc_html(ucfirst($material['material_type'])); ?>
-                                                    (<?php echo adhesion_format_price($material['price_per_ton']); ?>/t)
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <!-- Cantidad -->
-                                    <div class="form-group">
-                                        <label for="material_quantity_0"><?php _e('Cantidad (toneladas)', 'adhesion'); ?> *</label>
-                                        <input type="number" 
-                                               name="materials[0][quantity]" 
-                                               id="material_quantity_0" 
-                                               class="material-quantity-input"
-                                               min="0.1" 
-                                               step="0.1" 
-                                               max="<?php echo $calculator_config['max_quantity_per_material']; ?>"
-                                               placeholder="<?php _e('Ej: 25.5', 'adhesion'); ?>"
-                                               required>
-                                        <div class="input-help">
-                                            <span class="minimum-quantity-text" style="display: none;">
-                                                <?php _e('Mínimo:', 'adhesion'); ?> <span class="minimum-value">0</span>t
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Precio unitario (solo lectura) -->
-                                    <div class="form-group">
-                                        <label><?php _e('Precio por tonelada', 'adhesion'); ?></label>
-                                        <div class="price-display">
-                                            <span class="price-per-ton">--</span>
-                                            <span class="currency"><?php echo esc_html($calculator_config['currency']); ?></span>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Total del material -->
-                                    <div class="form-group">
-                                        <label><?php _e('Subtotal', 'adhesion'); ?></label>
-                                        <div class="total-display">
-                                            <span class="material-total">0,00</span>
-                                            <span class="currency"><?php echo esc_html($calculator_config['currency']); ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Alertas del material -->
-                                <div class="material-alerts"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Primer material (visible por defecto) -->
-                    <div class="material-row" data-row-index="0">
-                        <div class="material-row-header">
-                            <h4 class="material-row-title"><?php _e('Material', 'adhesion'); ?> <span class="material-number">1</span></h4>
-                            <button type="button" class="remove-material-btn" title="<?php _e('Eliminar material', 'adhesion'); ?>" style="display: none;">
-                                <span class="dashicons dashicons-trash"></span>
-                            </button>
-                        </div>
-                        
-                        <div class="material-row-content">
-                            <div class="form-grid">
-                                
-                                <!-- Selector de material -->
-                                <div class="form-group">
-                                    <label for="material_type_0"><?php _e('Tipo de Material', 'adhesion'); ?> *</label>
-                                    <select name="materials[0][type]" id="material_type_0" class="material-type-select" required>
-                                        <option value=""><?php _e('Selecciona un material...', 'adhesion'); ?></option>
-                                        <?php foreach ($active_materials as $material): ?>
-                                            <option value="<?php echo esc_attr($material['material_type']); ?>" 
-                                                    data-price="<?php echo esc_attr($material['price_per_ton']); ?>"
-                                                    data-minimum="<?php echo esc_attr($material['minimum_quantity']); ?>"
-                                                    data-description="<?php echo esc_attr($material['description'] ?? ''); ?>">
-                                                <?php echo esc_html(ucfirst($material['material_type'])); ?>
-                                                (<?php echo adhesion_format_price($material['price_per_ton']); ?>/t)
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                
-                                <!-- Cantidad -->
-                                <div class="form-group">
-                                    <label for="material_quantity_0"><?php _e('Cantidad (toneladas)', 'adhesion'); ?> *</label>
-                                    <input type="number" 
-                                           name="materials[0][quantity]" 
-                                           id="material_quantity_0" 
-                                           class="material-quantity-input"
-                                           min="0.1" 
-                                           step="0.1" 
-                                           max="<?php echo $calculator_config['max_quantity_per_material']; ?>"
-                                           placeholder="<?php _e('Ej: 25.5', 'adhesion'); ?>"
-                                           required>
-                                    <div class="input-help">
-                                        <span class="minimum-quantity-text" style="display: none;">
-                                            <?php _e('Mínimo:', 'adhesion'); ?> <span class="minimum-value">0</span>t
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Precio unitario (solo lectura) -->
-                                <div class="form-group">
-                                    <label><?php _e('Precio por tonelada', 'adhesion'); ?></label>
-                                    <div class="price-display">
-                                        <span class="price-per-ton">--</span>
-                                        <span class="currency"><?php echo esc_html($calculator_config['currency']); ?></span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Total del material -->
-                                <div class="form-group">
-                                    <label><?php _e('Subtotal', 'adhesion'); ?></label>
-                                    <div class="total-display">
-                                        <span class="material-total">0,00</span>
-                                        <span class="currency"><?php echo esc_html($calculator_config['currency']); ?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Alertas del material -->
-                            <div class="material-alerts"></div>
-                        </div>
-                    </div>
-                
-                <?php endif; ?>
-            </div>
-            
-            <!-- Botón para agregar materiales -->
-            <?php if (!empty($active_materials)): ?>
-                <div class="add-material-section">
-                    <button type="button" id="add-material-btn" class="adhesion-btn adhesion-btn-secondary">
-                        <span class="dashicons dashicons-plus-alt"></span>
-                        <?php _e('Agregar otro material', 'adhesion'); ?>
-                    </button>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- Sección de opciones adicionales -->
-        <div class="calculator-options-section">
-            <h3 class="section-title">
-                <span class="section-icon">⚙️</span>
-                <?php _e('Opciones del cálculo', 'adhesion'); ?>
-            </h3>
-            
-            <div class="options-grid">
-                
-                <!-- Aplicar descuentos -->
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="apply_discounts" id="apply_discounts" value="1" checked>
-                        <span class="checkmark"></span>
-                        <?php _e('Aplicar descuentos por volumen', 'adhesion'); ?>
-                    </label>
-                    <p class="option-description">
-                        <?php _e('Se aplicarán descuentos automáticos según la cantidad total del pedido.', 'adhesion'); ?>
-                    </p>
-                </div>
-                
-                <!-- Incluir IVA -->
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="include_taxes" id="include_taxes" value="1" checked>
-                        <span class="checkmark"></span>
-                        <?php printf(__('Incluir IVA (%s%%)', 'adhesion'), $calculator_config['tax_rate']); ?>
-                    </label>
-                    <p class="option-description">
-                        <?php _e('El precio final incluirá el IVA correspondiente.', 'adhesion'); ?>
-                    </p>
-                </div>
-                
-                <!-- Notas adicionales -->
-                <div class="form-group form-group-full">
-                    <label for="calculation_notes"><?php _e('Notas del cálculo (opcional)', 'adhesion'); ?></label>
-                    <textarea name="notes" 
-                              id="calculation_notes" 
-                              rows="3" 
-                              placeholder="<?php _e('Añade cualquier observación sobre este cálculo...', 'adhesion'); ?>"></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Botones de acción -->
-        <div class="calculator-actions">
-            <button type="button" id="calculate-btn" class="adhesion-btn adhesion-btn-primary adhesion-btn-large">
-                <span class="btn-icon">🧮</span>
-                <span class="btn-text"><?php _e('Calcular Presupuesto', 'adhesion'); ?></span>
-                <span class="btn-loading" style="display: none;">
-                    <span class="spinner"></span>
-                    <?php _e('Calculando...', 'adhesion'); ?>
-                </span>
-            </button>
-            
-            <button type="button" id="reset-calculator-btn" class="adhesion-btn adhesion-btn-outline">
-                <span class="dashicons dashicons-update"></span>
-                <?php _e('Reiniciar', 'adhesion'); ?>
-            </button>
-        </div>
-    </form>
-
-    <!-- Sección de resultados -->
-    <div id="calculation-results" class="calculation-results" style="display: none;">
-        
-        <!-- Resumen del cálculo -->
-        <div class="results-header">
-            <h3 class="results-title">
-                <span class="results-icon">📋</span>
-                <?php _e('Resultado del cálculo', 'adhesion'); ?>
-            </h3>
-            <div class="results-date">
-                <?php _e('Calculado el', 'adhesion'); ?>: <span class="calculation-date">--</span>
-            </div>
-        </div>
-        
-        <!-- Desglose de materiales -->
-        <div class="materials-breakdown">
-            <h4><?php _e('Desglose por materiales', 'adhesion'); ?></h4>
-            <div class="materials-table-container">
-                <table class="materials-table">
+        <!-- Tabla de materiales -->
+        <div class="materials-table-container">
+            <form id="ubica-calculator-form">
+                <table class="ubica-materials-table">
                     <thead>
                         <tr>
-                            <th><?php _e('Material', 'adhesion'); ?></th>
-                            <th><?php _e('Cantidad', 'adhesion'); ?></th>
-                            <th><?php _e('Precio/t', 'adhesion'); ?></th>
-                            <th><?php _e('Subtotal', 'adhesion'); ?></th>
+                            <th class="material-column"><?php _e('Material del envase', 'adhesion'); ?></th>
+                            <th class="domestic-column"><?php _e('Doméstico (t)', 'adhesion'); ?></th>
+                            <th class="cost-column"><?php _e('Coste €', 'adhesion'); ?></th>
+                            <th class="commercial-column"><?php _e('Comercial (t)', 'adhesion'); ?></th>
+                            <th class="cost-column"><?php _e('Coste €', 'adhesion'); ?></th>
+                            <th class="industrial-column"><?php _e('Industrial (t)', 'adhesion'); ?></th>
+                            <th class="cost-column"><?php _e('Coste €', 'adhesion'); ?></th>
+                            <th class="total-column"><?php _e('Total', 'adhesion'); ?></th>
                         </tr>
                     </thead>
-                    <tbody id="materials-breakdown-body">
-                        <!-- Se rellena con JavaScript -->
+                    <tbody>
+                        <?php foreach ($materials as $index => $material): ?>
+                        <tr class="material-row" data-material="<?php echo esc_attr($material->material_name); ?>">
+                            <!-- Número y nombre del material -->
+                            <td class="material-info">
+                                <span class="material-number"><?php echo ($index + 1); ?>.</span>
+                                <span class="material-name"><?php echo esc_html($material->material_name); ?></span>
+                                
+                                <!-- Subcategorías si las hay (para materiales como plástico) -->
+                                <?php if (strpos(strtolower($material->material_name), 'plástico') !== false): ?>
+                                <div class="subcategories">
+                                    <div class="subcategory">
+                                        <span class="subcategory-label">No peligroso</span>
+                                    </div>
+                                    <div class="subcategory">
+                                        <span class="subcategory-label">Peligroso<sup>2</sup></span>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </td>
+                            
+                            <!-- Doméstico toneladas -->
+                            <td class="input-cell">
+                                <input type="number" 
+                                       step="1" 
+                                       min="0" 
+                                       class="quantity-input domestic-input" 
+                                       data-type="domestic"
+                                       data-material="<?php echo esc_attr($material->material_name); ?>"
+                                       data-price="<?php echo esc_attr($material->price_domestic); ?>"
+                                       placeholder="0">
+                            </td>
+                            
+                            <!-- Doméstico coste -->
+                            <td class="cost-display">
+                                <span class="cost-value domestic-cost" data-material="<?php echo esc_attr($material->material_name); ?>"></span>
+                            </td>
+                            
+                            <!-- Comercial toneladas -->
+                            <td class="input-cell">
+                                <input type="number" 
+                                       step="1" 
+                                       min="0" 
+                                       class="quantity-input commercial-input" 
+                                       data-type="commercial"
+                                       data-material="<?php echo esc_attr($material->material_name); ?>"
+                                       data-price="<?php echo esc_attr($material->price_commercial); ?>"
+                                       placeholder="0">
+                            </td>
+                            
+                            <!-- Comercial coste -->
+                            <td class="cost-display">
+                                <span class="cost-value commercial-cost" data-material="<?php echo esc_attr($material->material_name); ?>"></span>
+                            </td>
+                            
+                            <!-- Industrial toneladas -->
+                            <td class="input-cell">
+                                <input type="number" 
+                                       step="1" 
+                                       min="0" 
+                                       class="quantity-input industrial-input" 
+                                       data-type="industrial"
+                                       data-material="<?php echo esc_attr($material->material_name); ?>"
+                                       data-price="<?php echo esc_attr($material->price_industrial); ?>"
+                                       placeholder="0">
+                            </td>
+                            
+                            <!-- Industrial coste -->
+                            <td class="cost-display">
+                                <span class="cost-value industrial-cost" data-material="<?php echo esc_attr($material->material_name); ?>"></span>
+                            </td>
+                            
+                            <!-- Total del material -->
+                            <td class="total-display">
+                                <span class="material-total" data-material="<?php echo esc_attr($material->material_name); ?>"></span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
-            </div>
+            </form>
         </div>
-        
-        <!-- Resumen financiero -->
-        <div class="financial-summary">
-            <div class="summary-grid">
+
+        <!-- Panel de resumen lateral -->
+        <div class="summary-panel">
+            <div class="summary-card">
+                <h3 class="summary-title"><?php _e('Resumen', 'adhesion'); ?></h3>
                 
-                <div class="summary-item">
-                    <span class="summary-label"><?php _e('Total toneladas:', 'adhesion'); ?></span>
-                    <span class="summary-value" id="total-tons">0</span>
+                <div class="summary-lines">
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Doméstico:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="total-domestic"></span>
+                    </div>
+                    
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Coste:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="cost-domestic"></span>
+                    </div>
+                    
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Comercial:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="total-commercial"></span>
+                    </div>
+                    
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Coste:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="cost-commercial"></span>
+                    </div>
+                    
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Industrial:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="total-industrial"></span>
+                    </div>
+                    
+                    <div class="summary-line">
+                        <span class="summary-label"><?php _e('Coste:', 'adhesion'); ?></span>
+                        <span class="summary-value" id="cost-industrial"></span>
+                    </div>
+                    
+                    <div class="summary-line total-line">
+                        <span class="summary-label total-label"><?php _e('Total:', 'adhesion'); ?></span>
+                        <span class="summary-value total-value" id="grand-total"></span>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="summary-actions">
+                    <button type="button" class="btn-limpiar" id="clear-calculator">
+                        <?php _e('Limpiar', 'adhesion'); ?>
+                    </button>
+                    <button type="button" class="btn-calcular" id="calculate-button">
+                        <?php _e('Calcular', 'adhesion'); ?>
+                    </button>
+                </div>
+
+                <!-- Botón formalizar contrato (oculto hasta que se haga cálculo) -->
+                <div class="contract-actions" id="contract-actions" style="display: none;">
+                    <button type="button" class="btn-formalizar" id="formalize-contract">
+                        <?php _e('Formalizar Contrato', 'adhesion'); ?>
+                    </button>
                 </div>
                 
-                <div class="summary-item">
-                    <span class="summary-label"><?php _e('Subtotal:', 'adhesion'); ?></span>
-                    <span class="summary-value" id="subtotal">0,00 €</span>
-                </div>
-                
-                <div class="summary-item discount-item" style="display: none;">
-                    <span class="summary-label"><?php _e('Descuentos:', 'adhesion'); ?></span>
-                    <span class="summary-value discount-value" id="discount-amount">-0,00 €</span>
-                </div>
-                
-                <div class="summary-item tax-item" style="display: none;">
-                    <span class="summary-label"><?php printf(__('IVA (%s%%):', 'adhesion'), $calculator_config['tax_rate']); ?></span>
-                    <span class="summary-value" id="tax-amount">0,00 €</span>
-                </div>
-                
-                <div class="summary-item total-item">
-                    <span class="summary-label"><?php _e('TOTAL:', 'adhesion'); ?></span>
-                    <span class="summary-value total-value" id="total-price">0,00 €</span>
-                </div>
-                
-                <div class="summary-item">
-                    <span class="summary-label"><?php _e('Precio promedio/t:', 'adhesion'); ?></span>
-                    <span class="summary-value" id="average-price">0,00 €</span>
-                </div>
+
             </div>
-        </div>
-        
-        <!-- Alertas y avisos -->
-        <div class="calculation-warnings" id="calculation-warnings" style="display: none;">
-            <h4><?php _e('Avisos importantes', 'adhesion'); ?></h4>
-            <div class="warnings-list" id="warnings-list">
-                <!-- Se rellena con JavaScript -->
-            </div>
-        </div>
-        
-        <!-- Acciones del resultado -->
-        <div class="results-actions">
-            <button type="button" id="save-calculation-btn" class="adhesion-btn adhesion-btn-success">
-                <span class="dashicons dashicons-saved"></span>
-                <span class="btn-text"><?php _e('Guardar Cálculo', 'adhesion'); ?></span>
-                <span class="btn-loading" style="display: none;">
-                    <span class="spinner"></span>
-                    <?php _e('Guardando...', 'adhesion'); ?>
-                </span>
-            </button>
-            
-            <button type="button" id="create-contract-btn" class="adhesion-btn adhesion-btn-primary">
-                <span class="dashicons dashicons-media-document"></span>
-                <?php _e('Crear Contrato', 'adhesion'); ?>
-            </button>
-            
-            <button type="button" id="print-calculation-btn" class="adhesion-btn adhesion-btn-outline">
-                <span class="dashicons dashicons-printer"></span>
-                <?php _e('Imprimir', 'adhesion'); ?>
-            </button>
         </div>
     </div>
-
 </div>
 
-<!-- Datos para JavaScript -->
-<script type="text/javascript">
-    window.adhesionCalculatorConfig = <?php echo json_encode(array(
-        'materials' => $active_materials,
-        'config' => $calculator_config,
-        'ajaxUrl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('adhesion_nonce'),
-        'userId' => get_current_user_id(),
-        'messages' => array(
-            'selectMaterial' => __('Por favor, selecciona un material', 'adhesion'),
-            'enterQuantity' => __('Por favor, introduce una cantidad válida', 'adhesion'),
-            'calculationSaved' => __('Cálculo guardado correctamente', 'adhesion'),
-            'errorSaving' => __('Error al guardar el cálculo', 'adhesion'),
-            'errorCalculating' => __('Error al calcular el presupuesto', 'adhesion'),
-            'confirmReset' => __('¿Estás seguro de que quieres reiniciar la calculadora?', 'adhesion'),
-            'minQuantityWarning' => __('La cantidad está por debajo del mínimo recomendado', 'adhesion'),
-            'maxQuantityWarning' => __('La cantidad excede el máximo permitido', 'adhesion'),
-            'noMaterialsSelected' => __('Debes seleccionar al menos un material', 'adhesion')
-        ),
-        'currency' => array(
-            'symbol' => '€',
-            'code' => $calculator_config['currency'],
-            'decimals' => 2,
-            'decimal_separator' => ',',
-            'thousand_separator' => '.'
-        )
-    )); ?>
-    </script>
-</script>
-
+<!-- Estilos CSS inline temporales (moveremos a archivo CSS después) -->
 <style>
-/* Estilos específicos para la calculadora - Se integrarán en frontend.css */
-.adhesion-calculator-container {
+.ubica-calculator-container {
     max-width: 1200px;
-    margin: 0 10px 10px 0;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
 }
 
-.adhesion-btn-primary {
-    background: #007cba;
-    color: white;
+.calculator-header {
+    text-align: center;
+    margin-bottom: 30px;
 }
 
-.adhesion-btn-primary:hover {
-    background: #005a87;
-    color: white;
+.calculator-title {
+    font-size: 24px;
+    color: #333;
+    margin: 0 0 10px 0;
 }
 
-.adhesion-btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.adhesion-btn-secondary:hover {
-    background: #545b62;
-    color: white;
-}
-
-.adhesion-btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.adhesion-btn-success:hover {
-    background: #1e7e34;
-    color: white;
-}
-
-.adhesion-btn-outline {
-    background: transparent;
+.highlight-text {
     color: #007cba;
-    border: 2px solid #007cba;
+    font-weight: bold;
 }
 
-.adhesion-btn-outline:hover {
-    background: #007cba;
-    color: white;
+.tarifas-generales-link {
+    color: #007cba;
+    text-decoration: none;
+    font-size: 14px;
 }
 
-.adhesion-btn-large {
-    padding: 16px 32px;
-    font-size: 18px;
+.tarifas-generales-link:hover {
+    text-decoration: underline;
 }
 
-.btn-loading {
+.calculator-main-content {
     display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid transparent;
-    border-top: 2px solid currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.calculation-results {
-    background: white;
-    border: 1px solid #e2e4e7;
-    border-radius: 8px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.results-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e2e4e7;
-}
-
-.results-title {
-    font-size: 1.4em;
-    margin: 0;
-    color: #23282d;
-    display: flex;
-    align-items: center;
-}
-
-.results-icon {
-    font-size: 1.2em;
-    margin-right: 10px;
-}
-
-.results-date {
-    color: #666;
-    font-size: 0.9em;
-}
-
-.materials-breakdown {
-    margin-bottom: 25px;
-}
-
-.materials-breakdown h4 {
-    margin: 0 0 15px 0;
-    color: #23282d;
+    gap: 30px;
+    align-items: flex-start;
 }
 
 .materials-table-container {
-    overflow-x: auto;
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.materials-table {
+.ubica-materials-table {
     width: 100%;
     border-collapse: collapse;
     background: white;
 }
 
-.materials-table th,
-.materials-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e2e4e7;
-}
-
-.materials-table th {
-    background: #f8f9fa;
+.ubica-materials-table th {
+    background: #e9ecef;
+    padding: 15px 10px;
+    text-align: center;
     font-weight: 600;
-    color: #23282d;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
 }
 
-.materials-table tbody tr:hover {
+.ubica-materials-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.material-info {
+    text-align: left !important;
+    padding-left: 20px !important;
+}
+
+.material-number {
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.material-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.subcategories {
+    margin-top: 8px;
+    padding-left: 20px;
+}
+
+.subcategory {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.subcategory-label {
     background: #f8f9fa;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: inline-block;
 }
 
-.financial-summary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 25px;
+.quantity-input {
+    width: 80px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: #007cba;
+    box-shadow: 0 0 5px rgba(0, 124, 186, 0.3);
+}
+
+.cost-display {
+    font-weight: 500;
+    color: #495057;
+}
+
+.material-total {
+    font-weight: bold;
+    color: #333;
+}
+
+.summary-panel {
+    flex: 0 0 300px;
+}
+
+.summary-card {
+    background: white;
+    border: 1px solid #dee2e6;
     border-radius: 8px;
+    padding: 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.summary-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 20px 0;
+    text-align: center;
+}
+
+.summary-lines {
     margin-bottom: 25px;
 }
 
-.summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-}
-
-.summary-item {
+.summary-line {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.summary-line:last-child {
+    border-bottom: none;
+}
+
+.total-line {
+    border-top: 2px solid #007cba;
+    border-bottom: none !important;
+    margin-top: 15px;
+    padding-top: 15px;
 }
 
 .summary-label {
     font-weight: 500;
-    opacity: 0.9;
+    color: #495057;
+}
+
+.total-label {
+    font-weight: bold;
+    color: #333;
+    font-size: 16px;
 }
 
 .summary-value {
-    font-weight: 700;
-    font-size: 1.1em;
-}
-
-.total-item {
-    grid-column: 1 / -1;
-    border-top: 2px solid rgba(255,255,255,0.3);
-    padding-top: 15px;
-    margin-top: 10px;
+    font-weight: 600;
+    color: #333;
 }
 
 .total-value {
-    font-size: 1.5em;
-    color: #fff;
-}
-
-.discount-value {
-    color: #90EE90;
-}
-
-.calculation-warnings {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 25px;
-}
-
-.calculation-warnings h4 {
-    margin: 0 0 15px 0;
-    color: #856404;
-}
-
-.warnings-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.warning-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 8px 0;
-    color: #856404;
-}
-
-.warning-icon {
-    color: #f0ad4e;
-    font-size: 1.2em;
-    margin-top: 2px;
-}
-
-.results-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.calculation-history-section {
-    background: white;
-    border: 1px solid #e2e4e7;
-    border-radius: 8px;
-    padding: 25px;
-    margin-top: 30px;
-}
-
-.recent-calculations {
-    min-height: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.loading-calculations {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #666;
-}
-
-.calculation-history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border: 1px solid #e2e4e7;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    transition: background 0.3s ease;
-}
-
-.calculation-history-item:hover {
-    background: #f8f9fa;
-}
-
-.history-info h5 {
-    margin: 0 0 5px 0;
-    color: #23282d;
-}
-
-.history-meta {
-    font-size: 0.9em;
-    color: #666;
-}
-
-.history-amount {
-    font-weight: 700;
-    font-size: 1.1em;
+    font-weight: bold;
     color: #007cba;
+    font-size: 18px;
 }
 
-.history-actions {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.adhesion-messages-container {
-    margin-bottom: 20px;
-}
-
-.adhesion-notice {
-    padding: 15px 20px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-}
-
-.adhesion-notice-error {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
-.adhesion-notice-warning {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-
-.adhesion-notice-success {
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-}
-
-.adhesion-notice-info {
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    color: #0c5460;
-}
-
-.no-materials-message {
-    text-align: center;
-    padding: 40px 20px;
-    color: #666;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .adhesion-calculator-container {
-        padding: 15px;
-    }
-    
-    .calculator-title {
-        font-size: 2em;
-    }
-    
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .summary-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .results-header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .results-actions {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .adhesion-btn {
-        width: 100%;
-        max-width: 300px;
-        justify-content: center;
-    }
-    
-    .materials-table {
-        font-size: 0.9em;
-    }
-    
-    .calculation-history-item {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .options-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-    .calculator-title {
-        font-size: 1.5em;
-    }
-    
-    .calculator-description {
-        font-size: 1em;
-    }
-    
-    .material-row-header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .form-group select,
-    .form-group input {
-        font-size: 16px; /* Evitar zoom en iOS */
-    }
-}
-
-/* Animaciones */
-.material-row {
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.calculation-results {
-    animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Estados de validación */
-.form-group.has-error input,
-.form-group.has-error select {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1);
-}
-
-.form-group.has-success input,
-.form-group.has-success select {
-    border-color: #28a745;
-    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1);
-}
-
-.error-message {
-    color: #dc3545;
-    font-size: 0.9em;
-    margin-top: 5px;
-}
-
-.success-message {
-    color: #28a745;
-    font-size: 0.9em;
-    margin-top: 5px;
-}
-
-/* Estados de los botones */
-.adhesion-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.adhesion-btn.loading {
-    pointer-events: none;
-}
-
-.adhesion-btn.loading .btn-text {
-    display: none;
-}
-
-.adhesion-btn.loading .btn-loading {
+.summary-actions {
     display: flex;
+    gap: 10px;
 }
 
-/* Mejoras de accesibilidad */
-.adhesion-btn:focus,
-.form-group input:focus,
-.form-group select:focus {
-    outline: 2px solid #007cba;
-    outline-offset: 2px;
-}
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-/* Print styles */
-@media print {
-    .calculator-actions,
-    .results-actions,
-    .add-material-section,
-    .history-actions,
-    .remove-material-btn {
-        display: none;
-    }
-    
-    .calculation-results {
-        box-shadow: none;
-        border: 1px solid #000;
-    }
-    
-    .financial-summary {
-        background: #f8f9fa !important;
-        color: #000 !important;
-        border: 1px solid #000;
-    }
-}
-.adhesion-calculator-header {
-    text-align: center;
-    margin-bottom: 30px;
-    padding: 30px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 12px;
-}
-
-.calculator-title {
-    font-size: 2.5em;
-    margin: 0 0 10px 0;
-    font-weight: 700;
-}
-
-.calculator-icon {
-    font-size: 1.2em;
-    margin-right: 10px;
-}
-
-.calculator-description {
-    font-size: 1.1em;
-    margin: 0;
-    opacity: 0.9;
-}
-
-.calculator-user-info {
-    margin-bottom: 30px;
-}
-
-.user-info-card {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    border-left: 4px solid #007cba;
-}
-
-.user-info-card h3 {
-    margin: 0 0 10px 0;
-    color: #23282d;
-}
-
-.calculator-materials-section,
-.calculator-options-section {
-    background: white;
-    border: 1px solid #e2e4e7;
-    border-radius: 8px;
-    padding: 25px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.section-title {
-    font-size: 1.4em;
-    margin: 0 0 20px 0;
-    color: #23282d;
-    display: flex;
-    align-items: center;
-}
-
-.section-icon {
-    font-size: 1.2em;
-    margin-right: 10px;
-}
-
-.material-row {
-    border: 1px solid #e2e4e7;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    overflow: hidden;
-    transition: box-shadow 0.3s ease;
-}
-
-.material-row:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.material-row-header {
-    background: #f8f9fa;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e2e4e7;
-}
-
-.material-row-title {
-    margin: 0;
-    font-size: 1.1em;
-    color: #23282d;
-}
-
-.remove-material-btn {
-    background: #dc3545;
-    color: white;
+.btn-limpiar,
+.btn-calcular {
+    flex: 1;
+    padding: 12px;
     border: none;
-    padding: 8px;
-    border-radius: 4px;
+    border-radius: 5px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: all 0.3s ease;
+    margin-bottom: 5px;
 }
 
-.remove-material-btn:hover {
-    background: #c82333;
+.btn-limpiar {
+    background: #6c757d;
+    color: white;
 }
 
-.material-row-content {
-    padding: 20px;
+.btn-limpiar:hover {
+    background: #5a6268;
 }
 
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+.btn-calcular {
+    background: #007cba;
+    color: white;
 }
 
-.form-group {
-    display: flex;
-    flex-direction: column;
+.btn-calcular:hover {
+    background: #0056b3;
 }
 
-.form-group label {
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #23282d;
-}
-
-.form-group select,
-.form-group input {
-    padding: 12px;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    font-size: 16px;
-    transition: border-color 0.3s ease;
-}
-
-.form-group select:focus,
-.form-group input:focus {
-    outline: none;
-    border-color: #007cba;
-    box-shadow: 0 0 0 2px rgba(0, 124, 186, 0.1);
-}
-
-.price-display,
-.total-display {
-    padding: 12px;
-    background: #f8f9fa;
-    border: 1px solid #e2e4e7;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 1.1em;
-}
-
-.input-help {
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #666;
-}
-
-.minimum-quantity-text {
-    color: #007cba;
-    font-weight: 500;
-}
-
-.material-alerts {
+.contract-actions {
     margin-top: 15px;
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
 }
 
-.material-alert {
-    padding: 10px 15px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-}
-
-.material-alert.warning {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-
-.material-alert.error {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
-.add-material-section {
-    text-align: center;
-    padding: 20px 0;
-}
-
-.options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.form-group-full {
-    grid-column: 1 / -1;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.checkbox-label input[type="checkbox"] {
-    margin-right: 10px;
-    transform: scale(1.2);
-}
-
-.option-description {
-    margin: 8px 0 0 0;
-    font-size: 0.9em;
-    color: #666;
-}
-
-.calculator-actions {
-    text-align: center;
-    margin: 30px 0;
-}
-
-.adhesion-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
+.btn-formalizar,
+.btn-compartir {
+    width: 100%;
+    padding: 15px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     font-weight: 600;
-    text-decoration: none;
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 16px;
-    margin: 
+    text-transform: uppercase;
+}
+
+.btn-formalizar {
+    background: #28a745;
+    color: white;
+}
+
+.btn-formalizar:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-compartir {
+    background: #007cba;
+    color: white;
+    margin-top: 10px;
+}
+
+.btn-compartir:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+
+
+/* Responsive */
+@media (max-width: 768px) {
+    .calculator-main-content {
+        flex-direction: column;
+    }
+    
+    .summary-panel {
+        flex: none;
+        width: 100%;
+    }
+    
+    .ubica-materials-table {
+        font-size: 12px;
+    }
+    
+    .quantity-input {
+        width: 60px;
+    }
+}
+</style>
+
+<!-- JavaScript para la calculadora -->
+<script>
+jQuery(document).ready(function($) {
+    
+    // Variables globales
+    let isCalculating = false;
+    
+    // Función principal de inicialización
+    function initUbicaCalculator() {
+        console.log('Inicializando calculadora UBICA...');
+        
+        // Eventos de los botones
+        $('#clear-calculator').on('click', clearCalculator);
+        $('#calculate-button').on('click', calculateAll);
+        $('#formalize-contract').on('click', formalizeContract);
+        $('#share-calculation').on('click', shareCalculation);
+        
+        // Formatear números al perder foco
+        $('.quantity-input').on('blur', function() {
+            formatInput($(this));
+        });
+        
+        // Validación en tiempo real (solo formato, no cálculo)
+        $('.quantity-input').on('input', function() {
+            validateNumericInput($(this));
+        });
+        
+        // Cargar cálculo existente si hay datos
+        <?php if ($calculation_to_load): ?>
+            console.log('Datos del cálculo recibidos desde PHP:', <?php echo wp_json_encode($calculation_to_load); ?>);
+            loadCalculationData(<?php echo wp_json_encode($calculation_to_load); ?>);
+        <?php endif; ?>
+        
+        console.log('Calculadora UBICA inicializada correctamente');
+    }
+    
+    /**
+     * Cargar datos de un cálculo existente
+     */
+    function loadCalculationData(calculationData) {
+        console.log('Cargando datos del cálculo:', calculationData);
+        
+        // Limpiar primero la calculadora
+        clearCalculator();
+        
+        // Parsear los datos de materiales
+        let materialsData = [];
+        try {
+            // Buscar en calculation_data (campo principal de la BD)
+            if (calculationData.calculation_data) {
+                let parsedData = typeof calculationData.calculation_data === 'string' ? 
+                    JSON.parse(calculationData.calculation_data) : 
+                    calculationData.calculation_data;
+                
+                // Los materiales pueden estar en parsedData.materials
+                if (parsedData.materials) {
+                    materialsData = parsedData.materials;
+                } else {
+                    console.warn('No se encontró campo "materials" en calculation_data:', parsedData);
+                }
+            } else if (calculationData.materials_data) {
+                // Formato alternativo: materials_data como JSON string
+                materialsData = typeof calculationData.materials_data === 'string' ? 
+                    JSON.parse(calculationData.materials_data) : 
+                    calculationData.materials_data;
+            } else if (calculationData.materials) {
+                // Formato directo: materials como array
+                materialsData = calculationData.materials;
+            } else {
+                console.warn('No se encontraron datos de materiales en:', calculationData);
+                return;
+            }
+        } catch (e) {
+            console.error('Error parsing materials data:', e);
+            return;
+        }
+        
+        console.log('Materiales a cargar:', materialsData);
+        
+        // Poblar cada material en el formulario
+        materialsData.forEach(function(material) {
+            console.log('Procesando material:', material);
+            
+            // Verificar estructura de datos correcta
+            if (!material.material || !material.type || !material.quantity) {
+                console.warn('Material con datos incompletos:', material);
+                return;
+            }
+            
+            const materialName = material.material;
+            const materialType = material.type;
+            const quantity = parseInt(material.quantity) || 0;
+            
+            if (quantity <= 0) {
+                console.log('Cantidad 0 o inválida para:', materialName, materialType);
+                return;
+            }
+            
+            // Buscar el input correspondiente
+            const inputSelector = `input[data-material="${materialName}"][data-type="${materialType}"]`;
+            const $input = $(inputSelector);
+            
+            console.log('Buscando input:', inputSelector);
+            console.log('Elementos encontrados:', $input.length);
+            console.log('Material:', materialName, 'Tipo:', materialType, 'Cantidad:', quantity);
+            
+            if ($input.length > 0) {
+                // Llenar el campo
+                $input.val(quantity);
+                console.log(`✓ Cargado: ${materialName} ${materialType} = ${quantity}`);
+                
+                // Disparar evento change para recalcular automáticamente
+                $input.trigger('input');
+            } else {
+                console.warn(`✗ No se encontró input para: ${materialName} ${materialType}`);
+                // Debug: mostrar todos los inputs disponibles
+                console.log('Inputs disponibles:');
+                $('.quantity-input').each(function() {
+                    const $this = $(this);
+                    console.log(`- Material: "${$this.data('material')}", Tipo: "${$this.data('type')}"`);
+                });
+            }
+        });
+        
+        // Recalcular automáticamente después de cargar
+        setTimeout(function() {
+            calculateAll();
+        }, 100);
+        
+        console.log('Datos del cálculo cargados correctamente');
+    }
+    
+    /**
+     * Calcular coste de un material específico
+     */
+    function calculateMaterialCost($input) {
+        
+        const material = $input.data('material');
+        const type = $input.data('type'); // domestic, commercial, industrial
+        const price = parseFloat($input.data('price')) || 0;
+        const quantity = parseInt($input.val()) || 0;
+        
+        console.log('=== DEBUG calculateMaterialCost ===');
+        console.log('Material:', material);
+        console.log('Type:', type);
+        console.log('Price:', price);
+        console.log('Quantity:', quantity);
+        
+        // Calcular coste total para este tipo
+        const totalCost = quantity * price;
+        console.log('Total cost:', totalCost);
+        
+        // Actualizar el coste en la tabla
+        const costSelector = `.cost-value.${type}-cost[data-material="${material}"]`;
+        console.log('Selector:', costSelector);
+        
+        const $targetElement = $(costSelector);
+        console.log('Target element found:', $targetElement.length);
+        
+        if (totalCost > 0) {
+            const formattedCost = formatCurrency(totalCost);
+            console.log('Formatted cost:', formattedCost);
+            $targetElement.text(formattedCost);
+            console.log('Element text after update:', $targetElement.text());
+        } else {
+            $targetElement.text('');
+        }
+        
+        // Calcular total del material (suma de todos los tipos)
+        updateMaterialTotal(material);
+        
+        console.log(`Calculado: ${material} ${type} = ${quantity}t × ${price}€ = ${totalCost}€`);
+        console.log('=== END DEBUG ===');
+    }
+    
+    /**
+     * Actualizar total de un material específico
+     */
+    function updateMaterialTotal(material) {
+        let materialTotal = 0;
+        
+        // Sumar todos los costes de este material
+        $(`.cost-value[data-material="${material}"]`).each(function() {
+            const costText = $(this).text().replace(/[^\d.,]/g, '');
+            const cost = parseFloat(costText.replace(',', '.')) || 0;
+            materialTotal += cost;
+        });
+        
+        // Actualizar el total del material (ocultar si es 0)
+        if (materialTotal === 0) {
+            $(`.material-total[data-material="${material}"]`).text('');
+        } else {
+            $(`.material-total[data-material="${material}"]`).text(Math.round(materialTotal) + ' €');
+        }
+    }
+    
+    /**
+     * Actualizar resumen lateral
+     */
+    function updateSummary() {
+        let totals = {
+            domestic: { tons: 0, cost: 0 },
+            commercial: { tons: 0, cost: 0 },
+            industrial: { tons: 0, cost: 0 }
+        };
+        
+        // Recorrer todos los inputs y sumar por tipo
+        $('.quantity-input').each(function() {
+            const $input = $(this);
+            const type = $input.data('type');
+            const quantity = parseInt($input.val()) || 0;
+            const price = parseFloat($input.data('price')) || 0;
+            const cost = quantity * price;
+            
+            if (totals[type]) {
+                totals[type].tons += quantity;
+                totals[type].cost += cost;
+            }
+        });
+        
+        // Actualizar los valores en el resumen (ocultar si es 0)
+        $('#total-domestic').text(totals.domestic.tons > 0 ? Math.round(totals.domestic.tons) + ' (t)' : '');
+        $('#cost-domestic').text(formatCurrency(totals.domestic.cost));
+        
+        $('#total-commercial').text(totals.commercial.tons > 0 ? Math.round(totals.commercial.tons) + ' (t)' : '');
+        $('#cost-commercial').text(formatCurrency(totals.commercial.cost));
+        
+        $('#total-industrial').text(totals.industrial.tons > 0 ? Math.round(totals.industrial.tons) + ' (t)' : '');
+        $('#cost-industrial').text(formatCurrency(totals.industrial.cost));
+        
+        // Total general
+        const grandTotal = totals.domestic.cost + totals.commercial.cost + totals.industrial.cost;
+        $('#grand-total').text(grandTotal > 0 ? formatCurrency(grandTotal) : '');
+        
+        console.log('Resumen actualizado:', totals, 'Total:', grandTotal);
+    }
+    
+    /**
+     * Limpiar toda la calculadora
+     */
+    function clearCalculator() {
+        console.log('Limpiando calculadora...');
+        
+        // Limpiar todos los inputs
+        $('.quantity-input').val('');
+        
+        // Limpiar todos los costes
+        $('.cost-value').text('');
+        
+        // Limpiar totales de materiales
+        $('.material-total').text('');
+        
+        // Limpiar resumen
+        $('#total-domestic, #total-commercial, #total-industrial').text('');
+        $('#cost-domestic, #cost-commercial, #cost-industrial').text('');
+        $('#grand-total').text('');
+        
+        // Ocultar botón de formalizar contrato
+        $('#contract-actions').hide();
+
+        
+        console.log('Calculadora limpiada');
+    }
+    
+    /**
+     * Recalcular todo (botón Calcular)
+     */
+    function calculateAll() {
+        console.log('Calculando toda la calculadora...');
+        
+        // Verificar que hay al menos un input con valor
+        let hasValues = false;
+        $('.quantity-input').each(function() {
+            if ($(this).val() && parseInt($(this).val()) > 0) {
+                hasValues = true;
+                return false; // break
+            }
+        });
+        
+        if (!hasValues) {
+            showMessage('Por favor, introduce al menos una cantidad antes de calcular', 'warning');
+            return;
+        }
+        
+        // Recalcular cada input que tenga valor
+        $('.quantity-input').each(function() {
+            const $input = $(this);
+            if ($input.val() && parseInt($input.val()) > 0) {
+                console.log('Procesando input:', $input);
+                calculateMaterialCost($input);
+            }
+        });
+        
+        // Actualizar resumen
+        updateSummary();
+        
+        // Guardar cálculo automáticamente
+        saveCalculation();
+        
+        // Mostrar botón de formalizar contrato si hay total
+        const grandTotal = parseFloat($('#grand-total').text().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (grandTotal > 0) {
+            $('#contract-actions').show();
+        }
+        
+        console.log('Cálculo completo finalizado');
+    }
+    
+    
+    /**
+     * Guardar cálculo en la base de datos (automático)
+     */
+    function saveCalculation() {
+        console.log('Guardando cálculo automáticamente...');
+        
+        // Recopilar datos del cálculo
+        const calculationData = {
+            materials: [],
+            totals: {
+                domestic: { tons: 0, cost: 0 },
+                commercial: { tons: 0, cost: 0 },
+                industrial: { tons: 0, cost: 0 }
+            },
+            grand_total: 0
+        };
+        
+        // Recopilar datos de cada material
+        $('.quantity-input').each(function() {
+            const $input = $(this);
+            const quantity = parseInt($input.val()) || 0;
+            
+            if (quantity > 0) {
+                const material = $input.data('material');
+                const type = $input.data('type');
+                const price = parseFloat($input.data('price')) || 0;
+                const cost = quantity * price;
+                
+                calculationData.materials.push({
+                    material: material,
+                    type: type,
+                    quantity: quantity,
+                    price_per_ton: price,
+                    total_cost: cost
+                });
+                
+                // Sumar a totales
+                if (calculationData.totals[type]) {
+                    calculationData.totals[type].tons += quantity;
+                    calculationData.totals[type].cost += cost;
+                }
+            }
+        });
+        
+        // Calcular gran total
+        calculationData.grand_total = 
+            calculationData.totals.domestic.cost + 
+            calculationData.totals.commercial.cost + 
+            calculationData.totals.industrial.cost;
+        
+        // Verificar que hay datos para guardar
+        if (calculationData.materials.length === 0) {
+            console.log('No hay datos para guardar');
+            return;
+        }
+        
+        // Llamada AJAX para guardar (silenciosa)
+        $.ajax({
+            url: adhesion_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'save_ubica_calculation',
+                nonce: adhesion_ajax.nonce,
+                calculation_data: JSON.stringify(calculationData)
+            },
+            success: function(response) {
+                if (response.success) {
+                    console.log('Cálculo guardado correctamente, ID:', response.data.calculation_id);
+                    // Guardar ID del cálculo para uso posterior
+                    localStorage.setItem('last_calculation_id', response.data.calculation_id);
+                    
+                    // Actualizar URL para incluir el calc_id (sin recargar la página)
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('calc_id', response.data.calculation_id);
+                    window.history.replaceState({}, '', newUrl);
+                } else {
+                    console.error('Error al guardar cálculo:', response.data);
+                }
+            },
+            error: function() {
+                console.error('Error de conexión al guardar el cálculo');
+            }
+        });
+        
+        console.log('Datos del cálculo preparados para guardar:', calculationData);
+    }
+    
+    /**
+     * Formalizar contrato - redirigir a formulario
+     */
+    function formalizeContract() {
+        // Verificar que hay un cálculo guardado
+        const grandTotal = parseFloat($('#grand-total').text().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (grandTotal === 0) {
+            showMessage('Primero debes realizar un cálculo antes de formalizar el contrato', 'error');
+            return;
+        }
+        
+        // Obtener el último calculation_id del localStorage
+        const lastCalculationId = localStorage.getItem('last_calculation_id');
+        
+        // Construir URL de la página formulario-adhesion usando la URL desde WordPress
+        let formUrl = adhesion_ajax.form_url;
+        
+        // Agregar parámetros
+        const separator = formUrl.includes('?') ? '&' : '?';
+        formUrl += separator + 'step=company_data';
+        
+        if (lastCalculationId) {
+            formUrl += '&calc_id=' + lastCalculationId;
+        }
+        
+        console.log('Redirigiendo a:', formUrl);
+        
+        // Redirigir al formulario
+        window.location.href = formUrl;
+    }
+    
+    /**
+     * Compartir cálculo - generar enlace compartible
+     */
+    function shareCalculation() {
+        const calculationId = localStorage.getItem('last_calculation_id');
+        if (!calculationId) {
+            showMessage('No hay cálculo para compartir', 'error');
+            return;
+        }
+        
+        // Crear URL con el calc_id
+        const shareUrl = new URL(window.location.href);
+        shareUrl.searchParams.set('calc_id', calculationId);
+        
+        // Copiar al portapapeles
+        navigator.clipboard.writeText(shareUrl.toString()).then(function() {
+            showMessage('Enlace del cálculo copiado al portapapeles', 'success');
+        }).catch(function() {
+            // Fallback para navegadores que no soportan clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl.toString();
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showMessage('Enlace del cálculo copiado al portapapeles', 'success');
+        });
+    }
+    
+    /**
+     * Formatear input al perder foco
+     */
+    function formatInput($input) {
+        const value = parseInt($input.val());
+        if (!isNaN(value) && value > 0) {
+            $input.val(value);
+        }
+    }
+    
+    /**
+     * Formatear cantidad como moneda
+     */
+    function formatCurrency(amount) {
+        if (isNaN(amount) || amount === 0) {
+            return '';
+        }
+        return Math.round(amount) + ' €';
+    }
+    
+    /**
+     * Mostrar mensaje temporal
+     */
+    function showMessage(message, type = 'info') {
+        // Crear elemento de mensaje si no existe
+        let $messageContainer = $('#ubica-messages');
+        if ($messageContainer.length === 0) {
+            $messageContainer = $('<div id="ubica-messages" class="ubica-messages"></div>');
+            $('.ubica-calculator-container').prepend($messageContainer);
+        }
+        
+        // Crear mensaje
+        const $message = $(`
+            <div class="ubica-message ubica-message-${type}">
+                ${message}
+            </div>
+        `);
+        
+        // Mostrar mensaje
+        $messageContainer.html($message);
+        
+        // Auto-ocultar después de 3 segundos
+        setTimeout(function() {
+            $message.fadeOut(500, function() {
+                $(this).remove();
+            });
+        }, 3000);
+    }
+    
+    /**
+     * Validar entrada numérica (solo enteros)
+     */
+    function validateNumericInput($input) {
+        const value = $input.val();
+        const numericValue = value.replace(/[^0-9]/g, '');
+        
+        if (value !== numericValue) {
+            $input.val(numericValue);
+        }
+        
+        // Limitar a números positivos
+        const parsed = parseInt(numericValue);
+        if (parsed < 0) {
+            $input.val('0');
+        }
+    }
+    
+    // Evento adicional para validación
+    $('.quantity-input').on('keyup change', function() {
+        validateNumericInput($(this));
+    });
+    
+    // CSS adicional para mensajes
+    $('head').append(`
+        <style>
+        .ubica-messages {
+            margin-bottom: 20px;
+        }
+        
+        .ubica-message {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .ubica-message-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .ubica-message-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .ubica-message-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .ubica-message-info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+        }
+        </style>
+    `);
+    
+    // Inicializar la calculadora cuando el DOM esté listo
+    initUbicaCalculator();
+    
+    console.log('Script de calculadora UBICA cargado completamente');
+});
+</script>

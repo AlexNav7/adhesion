@@ -40,9 +40,12 @@ class Adhesion_Ajax_Handler {
         add_action('wp_ajax_adhesion_update_user_data', array($this, 'handle_update_user_data'));
         add_action('wp_ajax_adhesion_create_contract', array($this, 'handle_create_contract'));
         add_action('wp_ajax_adhesion_get_contract_status', array($this, 'handle_get_contract_status'));
+        add_action('wp_ajax_adhesion_create_transfer_payment', array($this, 'handle_create_transfer_payment'));
+        add_action('wp_ajax_adhesion_confirm_transfer', array($this, 'handle_confirm_transfer'));
         
         // AJAX para usuarios no logueados (si es necesario)
         add_action('wp_ajax_nopriv_adhesion_register_user', array($this, 'handle_register_user'));
+        add_action('wp_ajax_nopriv_adhesion_create_transfer_payment', array($this, 'handle_create_transfer_payment'));
         
         // AJAX para administradores
         add_action('wp_ajax_adhesion_admin_get_calculations', array($this, 'handle_admin_get_calculations'));
@@ -50,6 +53,9 @@ class Adhesion_Ajax_Handler {
         add_action('wp_ajax_adhesion_admin_update_prices', array($this, 'handle_admin_update_prices'));
         add_action('wp_ajax_adhesion_admin_save_document', array($this, 'handle_admin_save_document'));
         add_action('wp_ajax_adhesion_admin_get_stats', array($this, 'handle_admin_get_stats'));
+        
+        // Debug temporal
+        add_action('wp_ajax_adhesion_debug_settings', array($this, 'debug_settings'));
     }
     
     // ==========================================
@@ -547,5 +553,176 @@ class Adhesion_Ajax_Handler {
             'average_price_per_ton' => $total_tons > 0 ? $total_price / $total_tons : 0,
             'calculation_date' => current_time('mysql')
         );
+    }
+    
+    /**
+     * Crear pago por transferencia bancaria
+     */
+    public function handle_create_transfer_payment() {
+        try {
+            if (!wp_verify_nonce($_POST['nonce'], 'adhesion_nonce')) {
+                throw new Exception(__('Error de seguridad.', 'adhesion'));
+            }
+            
+            if (!is_user_logged_in()) {
+                throw new Exception(__('Usuario no autenticado.', 'adhesion'));
+            }
+            
+            $contract_id = intval($_POST['contract_id']);
+            $amount = floatval($_POST['amount']);
+            $payment_method = sanitize_text_field($_POST['payment_method']);
+            
+            if (!$contract_id || !$amount || $payment_method !== 'transfer') {
+                throw new Exception(__('Datos de pago inválidos.', 'adhesion'));
+            }
+            
+            // Verificar que el contrato existe y pertenece al usuario
+            $contract = $this->db->get_contract($contract_id);
+            if (!$contract || $contract['user_id'] != get_current_user_id()) {
+                throw new Exception(__('Contrato no válido o sin permisos.', 'adhesion'));
+            }
+            
+            // Verificar configuración de transferencia bancaria
+            $settings = get_option('adhesion_settings', array());
+            
+            // Debug: Log de configuración
+            error_log('[ADHESION DEBUG] Settings: ' . print_r($settings, true));
+            error_log('[ADHESION DEBUG] IBAN: ' . ($settings['bank_transfer_iban'] ?? 'NO CONFIGURADO'));
+            
+            if (empty($settings['bank_transfer_iban'])) {
+                throw new Exception(__('La transferencia bancaria no está configurada. IBAN: ' . ($settings['bank_transfer_iban'] ?? 'vacío'), 'adhesion'));
+            }
+            
+            // Obtener datos del contrato
+            $contract_data = array();
+            if (isset($contract['client_data']) && !empty($contract['client_data'])) {
+                if (is_array($contract['client_data'])) {
+                    $contract_data = $contract['client_data'];
+                } elseif (is_string($contract['client_data'])) {
+                    $decoded = json_decode($contract['client_data'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $contract_data = $decoded;
+                    }
+                }
+            }
+            
+            // Actualizar estado del contrato
+            global $wpdb;
+            $updated = $wpdb->update(
+                $wpdb->prefix . 'adhesion_contracts',
+                array(
+                    'payment_status' => 'pending_transfer',
+                    'payment_amount' => $amount,
+                    'payment_reference' => 'ADH-' . str_pad($contract_id, 6, '0', STR_PAD_LEFT)
+                ),
+                array('id' => $contract_id),
+                array('%s', '%f', '%s'),
+                array('%d')
+            );
+            
+            if ($updated === false) {
+                throw new Exception(__('Error al actualizar el contrato.', 'adhesion'));
+            }
+            
+            // Generar referencia de pago única
+            $payment_reference = 'ADH-' . str_pad($contract_id, 6, '0', STR_PAD_LEFT);
+            
+            // Preparar datos para el siguiente step
+            $transfer_data = array(
+                'contract_id' => $contract_id,
+                'amount' => $amount,
+                'formatted_amount' => number_format($amount, 2, ',', '.') . ' €',
+                'payment_reference' => $payment_reference,
+                'bank_name' => $settings['bank_transfer_bank_name'] ?? '',
+                'bank_iban' => $settings['bank_transfer_iban'] ?? '',
+                'bank_instructions' => $settings['bank_transfer_instructions'] ?? '',
+                'company_name' => $contract_data['company_name'] ?? 'N/A',
+                'contract_number' => $contract['contract_number'] ?? 'N/A'
+            );
+            
+            wp_send_json_success(array(
+                'message' => __('Transferencia bancaria preparada.', 'adhesion'),
+                'next_step' => 'transfer_instructions',
+                'transfer_data' => $transfer_data
+            ));
+            
+        } catch (Exception $e) {
+            error_log('[ADHESION] Error en transferencia bancaria: ' . $e->getMessage());
+            wp_send_json_error($e->getMessage());
+        }
+    }
+    
+    /**
+     * Confirmar transferencia realizada
+     */
+    public function handle_confirm_transfer() {
+        try {
+            if (!wp_verify_nonce($_POST['nonce'], 'adhesion_nonce')) {
+                throw new Exception(__('Error de seguridad.', 'adhesion'));
+            }
+            
+            if (!is_user_logged_in()) {
+                throw new Exception(__('Usuario no autenticado.', 'adhesion'));
+            }
+            
+            $contract_id = intval($_POST['contract_id']);
+            $amount = floatval($_POST['amount']);
+            $payment_reference = sanitize_text_field($_POST['payment_reference']);
+            $transfer_date = sanitize_text_field($_POST['transfer_date']);
+            $transfer_notes = sanitize_textarea_field($_POST['transfer_notes']);
+            
+            if (!$contract_id || !$amount || !$payment_reference || !$transfer_date) {
+                throw new Exception(__('Datos de confirmación incompletos.', 'adhesion'));
+            }
+            
+            // Verificar contrato
+            $contract = $this->db->get_contract($contract_id);
+            if (!$contract || $contract['user_id'] != get_current_user_id()) {
+                throw new Exception(__('Contrato no válido o sin permisos.', 'adhesion'));
+            }
+            
+            // Actualizar estado
+            global $wpdb;
+            $updated = $wpdb->update(
+                $wpdb->prefix . 'adhesion_contracts',
+                array(
+                    'payment_status' => 'transfer_confirmed',
+                    'payment_amount' => $amount,
+                    'payment_reference' => $payment_reference,
+                    'payment_completed_at' => $transfer_date . ' 00:00:00'
+                ),
+                array('id' => $contract_id),
+                array('%s', '%f', '%s', '%s'),
+                array('%d')
+            );
+            
+            if ($updated === false) {
+                throw new Exception(__('Error al confirmar la transferencia.', 'adhesion'));
+            }
+            
+            wp_send_json_success(array(
+                'message' => __('Transferencia confirmada correctamente.', 'adhesion'),
+                'redirect_url' => home_url('/mi-cuenta/')
+            ));
+            
+        } catch (Exception $e) {
+            error_log('[ADHESION] Error confirmando transferencia: ' . $e->getMessage());
+            wp_send_json_error($e->getMessage());
+        }
+    }
+    
+    /**
+     * Debug de configuración - método temporal
+     */
+    public function debug_settings() {
+        $settings = get_option('adhesion_settings', array());
+        
+        wp_send_json_success(array(
+            'all_settings' => $settings,
+            'bank_iban' => $settings['bank_transfer_iban'] ?? 'NO CONFIGURADO',
+            'bank_name' => $settings['bank_transfer_bank_name'] ?? 'NO CONFIGURADO',
+            'bank_instructions' => $settings['bank_transfer_instructions'] ?? 'NO CONFIGURADO',
+            'option_exists' => get_option('adhesion_settings') !== false ? 'SÍ' : 'NO'
+        ));
     }
 }

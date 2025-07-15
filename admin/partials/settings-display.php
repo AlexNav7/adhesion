@@ -21,8 +21,26 @@ $settings = get_option('adhesion_settings', array());
 if (isset($_POST['submit']) && wp_verify_nonce($_POST['adhesion_settings_nonce'], 'adhesion_settings_save')) {
     $settings = $_POST['adhesion_settings'];
     
-    // Sanitizar configuraciones
-    $sanitized_settings = array();
+    // Debug temporal: Ver qué llega en POST
+    if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+        error_log('[ADHESION DEBUG] POST completo: ' . print_r($_POST, true));
+        error_log('[ADHESION DEBUG] POST adhesion_settings: ' . print_r($settings, true));
+        error_log('[ADHESION DEBUG] bank_transfer_iban: ' . ($settings['bank_transfer_iban'] ?? 'NO ENCONTRADO'));
+        error_log('[ADHESION DEBUG] bank_transfer_bank_name: ' . ($settings['bank_transfer_bank_name'] ?? 'NO ENCONTRADO'));
+        error_log('[ADHESION DEBUG] bank_transfer_instructions: ' . ($settings['bank_transfer_instructions'] ?? 'NO ENCONTRADO'));
+    }
+    
+    // Sanitizar configuraciones - MANTENER datos existentes
+    $current_settings = get_option('adhesion_settings', array());
+    $sanitized_settings = $current_settings; // Partir de la configuración existente
+    
+    // Debug: Mostrar configuración actual antes de modificar
+    if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+        error_log('[ADHESION DEBUG] Configuración ANTES de modificar:');
+        error_log('[ADHESION DEBUG] - IBAN actual: ' . ($current_settings['bank_transfer_iban'] ?? 'VACIO'));
+        error_log('[ADHESION DEBUG] - Banco actual: ' . ($current_settings['bank_transfer_bank_name'] ?? 'VACIO'));
+        error_log('[ADHESION DEBUG] - Instrucciones actual: ' . ($current_settings['bank_transfer_instructions'] ?? 'VACIO'));
+    }
     
     // Configuraciones de Redsys
     $sanitized_settings['redsys_merchant_code'] = sanitize_text_field($settings['redsys_merchant_code'] ?? '');
@@ -37,6 +55,22 @@ if (isset($_POST['submit']) && wp_verify_nonce($_POST['adhesion_settings_nonce']
     $sanitized_settings['docusign_account_id'] = sanitize_text_field($settings['docusign_account_id'] ?? '');
     $sanitized_settings['docusign_environment'] = in_array($settings['docusign_environment'] ?? 'demo', array('demo', 'production')) ? $settings['docusign_environment'] : 'demo';
     
+    // Configuraciones de transferencia bancaria
+    $sanitized_settings['bank_transfer_iban'] = sanitize_text_field($settings['bank_transfer_iban'] ?? '');
+    $sanitized_settings['bank_transfer_bank_name'] = sanitize_text_field($settings['bank_transfer_bank_name'] ?? '');
+    $sanitized_settings['bank_transfer_instructions'] = wp_kses_post($settings['bank_transfer_instructions'] ?? '');
+    
+    // Debug temporal: Verificar sanitización
+    if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+        error_log('[ADHESION DEBUG] Sanitización transferencia:');
+        error_log('[ADHESION DEBUG] - IBAN original: ' . ($settings['bank_transfer_iban'] ?? 'VACIO'));
+        error_log('[ADHESION DEBUG] - IBAN sanitizado: ' . $sanitized_settings['bank_transfer_iban']);
+        error_log('[ADHESION DEBUG] - Banco original: ' . ($settings['bank_transfer_bank_name'] ?? 'VACIO'));
+        error_log('[ADHESION DEBUG] - Banco sanitizado: ' . $sanitized_settings['bank_transfer_bank_name']);
+        error_log('[ADHESION DEBUG] - Instrucciones original: ' . ($settings['bank_transfer_instructions'] ?? 'VACIO'));
+        error_log('[ADHESION DEBUG] - Instrucciones sanitizado: ' . $sanitized_settings['bank_transfer_instructions']);
+    }
+    
     // Configuraciones generales
     $sanitized_settings['calculator_enabled'] = isset($settings['calculator_enabled']) ? '1' : '0';
     $sanitized_settings['auto_create_users'] = isset($settings['auto_create_users']) ? '1' : '0';
@@ -50,8 +84,25 @@ if (isset($_POST['submit']) && wp_verify_nonce($_POST['adhesion_settings_nonce']
     $sanitized_settings['email_from_address'] = sanitize_email($settings['email_from_address'] ?? get_option('admin_email'));
     
     // Guardar configuraciones
-    update_option('adhesion_settings', $sanitized_settings);
+    $update_result = update_option('adhesion_settings', $sanitized_settings);
     $settings = $sanitized_settings;
+    
+    // Debug temporal: Ver qué se guardó
+    if (defined('ADHESION_DEBUG') && ADHESION_DEBUG) {
+        error_log('[ADHESION DEBUG] Settings guardados: ' . print_r($sanitized_settings, true));
+        error_log('[ADHESION DEBUG] Update result: ' . ($update_result ? 'SUCCESS' : 'NO_CHANGES'));
+        error_log('[ADHESION DEBUG] IBAN guardado: ' . ($sanitized_settings['bank_transfer_iban'] ?? 'VACIO'));
+        
+        // Verificar inmediatamente lo que se guardó
+        $saved_settings = get_option('adhesion_settings', array());
+        error_log('[ADHESION DEBUG] Settings recuperados: ' . print_r($saved_settings, true));
+        
+        // Verificar específicamente los campos de transferencia
+        error_log('[ADHESION DEBUG] Verificación final:');
+        error_log('[ADHESION DEBUG] - IBAN final: ' . ($saved_settings['bank_transfer_iban'] ?? 'NO ENCONTRADO'));
+        error_log('[ADHESION DEBUG] - Banco final: ' . ($saved_settings['bank_transfer_bank_name'] ?? 'NO ENCONTRADO'));
+        error_log('[ADHESION DEBUG] - Instrucciones final: ' . ($saved_settings['bank_transfer_instructions'] ?? 'NO ENCONTRADO'));
+    }
     
     // Mostrar mensaje de éxito
     echo '<div class="notice notice-success is-dismissible"><p><strong>' . __('Configuraciones guardadas correctamente.', 'adhesion') . '</strong></p></div>';
@@ -60,6 +111,7 @@ if (isset($_POST['submit']) && wp_verify_nonce($_POST['adhesion_settings_nonce']
 // Verificar estado de configuración
 $redsys_configured = !empty($settings['redsys_merchant_code']) && !empty($settings['redsys_secret_key']);
 $docusign_configured = !empty($settings['docusign_integration_key']) && !empty($settings['docusign_account_id']);
+$bank_transfer_configured = !empty($settings['bank_transfer_iban']);
 ?>
 
 <div class="wrap">
@@ -102,6 +154,18 @@ $docusign_configured = !empty($settings['docusign_integration_key']) && !empty($
                             <h3><?php _e('DocuSign (Firmas)', 'adhesion'); ?></h3>
                             <p class="status-text">
                                 <?php echo $docusign_configured ? __('Configurado correctamente', 'adhesion') : __('Configuración pendiente', 'adhesion'); ?>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="status-item-card">
+                        <div class="status-icon <?php echo $bank_transfer_configured ? 'status-ok' : 'status-pending'; ?>">
+                            <span class="dashicons dashicons-admin-home"></span>
+                        </div>
+                        <div class="status-content">
+                            <h3><?php _e('Transferencia Bancaria', 'adhesion'); ?></h3>
+                            <p class="status-text">
+                                <?php echo $bank_transfer_configured ? __('Configurado correctamente', 'adhesion') : __('Configuración pendiente', 'adhesion'); ?>
                             </p>
                         </div>
                     </div>
@@ -222,6 +286,43 @@ $docusign_configured = !empty($settings['docusign_integration_key']) && !empty($
             </div>
         </div>
         
+        <!-- Configuración de Transferencia Bancaria -->
+        <div class="adhesion-card">
+            <div class="adhesion-card-header">
+                <h2><?php _e('Configuración de Transferencia Bancaria', 'adhesion'); ?></h2>
+                <p class="description"><?php _e('Configuración para pagos por transferencia bancaria como alternativa a Redsys.', 'adhesion'); ?></p>
+            </div>
+            <div class="adhesion-card-body">
+                <div class="adhesion-form-group">
+                    <div class="adhesion-form-row">
+                        <label for="bank_transfer_bank_name"><?php _e('Nombre del Banco', 'adhesion'); ?></label>
+                        <input type="text" name="adhesion_settings[bank_transfer_bank_name]" id="bank_transfer_bank_name" 
+                               value="<?php echo esc_attr($settings['bank_transfer_bank_name'] ?? ''); ?>" 
+                               placeholder="Banco Santander, BBVA, CaixaBank..." />
+                        <p class="adhesion-form-help"><?php _e('Nombre de la entidad bancaria donde se encuentra la cuenta.', 'adhesion'); ?></p>
+                    </div>
+                    
+                    <div class="adhesion-form-row">
+                        <label for="bank_transfer_iban"><?php _e('IBAN de la Cuenta Bancaria', 'adhesion'); ?></label>
+                        <input type="text" name="adhesion_settings[bank_transfer_iban]" id="bank_transfer_iban" 
+                               value="<?php echo esc_attr($settings['bank_transfer_iban'] ?? ''); ?>" 
+                               placeholder="ES91 2100 0418 4502 0005 1332"
+                               pattern="[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}"
+                               title="Formato IBAN válido: ES91 2100 0418 4502 0005 1332" />
+                        <p class="adhesion-form-help"><?php _e('Número IBAN de la cuenta bancaria donde se recibirán las transferencias.', 'adhesion'); ?></p>
+                    </div>
+                    
+                    <div class="adhesion-form-row">
+                        <label for="bank_transfer_instructions"><?php _e('Instrucciones de Transferencia', 'adhesion'); ?></label>
+                        <textarea name="adhesion_settings[bank_transfer_instructions]" id="bank_transfer_instructions" 
+                                  rows="6" style="width: 100%; max-width: 600px;"
+                                  placeholder="<?php _e('Introduce las instrucciones que verán los usuarios para realizar la transferencia...', 'adhesion'); ?>"><?php echo esc_textarea($settings['bank_transfer_instructions'] ?? ''); ?></textarea>
+                        <p class="adhesion-form-help"><?php _e('Instrucciones detalladas que verán los usuarios al seleccionar pago por transferencia. Puedes incluir información adicional como el nombre del banco, titular de la cuenta, concepto de pago, etc.', 'adhesion'); ?></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Configuraciones Generales -->
         <div class="adhesion-card">
             <div class="adhesion-card-header">
@@ -334,17 +435,12 @@ function adhesionTestConfiguration() {
     const secretKey = document.getElementById('redsys_secret_key').value;
     const integrationKey = document.getElementById('docusign_integration_key').value;
     const accountId = document.getElementById('docusign_account_id').value;
+    const bankIban = document.getElementById('bank_transfer_iban').value;
     
     let errors = [];
+    let warnings = [];
     
-    if (!merchantCode) {
-        errors.push('<?php echo esc_js(__('Falta el código de comercio de Redsys', 'adhesion')); ?>');
-    }
-    
-    if (!secretKey) {
-        errors.push('<?php echo esc_js(__('Falta la clave secreta de Redsys', 'adhesion')); ?>');
-    }
-    
+    // Verificaciones obligatorias para DocuSign
     if (!integrationKey) {
         errors.push('<?php echo esc_js(__('Falta la Integration Key de DocuSign', 'adhesion')); ?>');
     }
@@ -353,12 +449,36 @@ function adhesionTestConfiguration() {
         errors.push('<?php echo esc_js(__('Falta el Account ID de DocuSign', 'adhesion')); ?>');
     }
     
+    // Verificaciones para métodos de pago (al menos uno debe estar configurado)
+    const hasRedsys = merchantCode && secretKey;
+    const hasBankTransfer = bankIban;
+    
+    if (!hasRedsys && !hasBankTransfer) {
+        errors.push('<?php echo esc_js(__('Debes configurar al menos un método de pago: Redsys o Transferencia Bancaria', 'adhesion')); ?>');
+    }
+    
+    if (!hasRedsys) {
+        warnings.push('<?php echo esc_js(__('Redsys no configurado - los pagos con tarjeta no estarán disponibles', 'adhesion')); ?>');
+    }
+    
+    if (!hasBankTransfer) {
+        warnings.push('<?php echo esc_js(__('Transferencia bancaria no configurada - esta opción de pago no estará disponible', 'adhesion')); ?>');
+    }
+    
     if (errors.length > 0) {
         alert('<?php echo esc_js(__('Errores de configuración:', 'adhesion')); ?>\n\n' + errors.join('\n'));
         return;
     }
     
-    alert('<?php echo esc_js(__('Configuración básica completa. Para pruebas completas, guarda la configuración y realiza un proceso de adhesión de prueba.', 'adhesion')); ?>');
+    let message = '<?php echo esc_js(__('Configuración básica completa.', 'adhesion')); ?>';
+    
+    if (warnings.length > 0) {
+        message += '\n\n<?php echo esc_js(__('Advertencias:', 'adhesion')); ?>\n' + warnings.join('\n');
+    }
+    
+    message += '\n\n<?php echo esc_js(__('Para pruebas completas, guarda la configuración y realiza un proceso de adhesión de prueba.', 'adhesion')); ?>';
+    
+    alert(message);
 }
 
 // Mostrar/ocultar campos según el entorno

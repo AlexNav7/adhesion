@@ -703,7 +703,7 @@ class Adhesion_Calculator {
         ob_start();
         include ADHESION_PLUGIN_PATH . 'public/partials/calculator-display.php';
         return ob_get_clean();
-    }
+    } 
 
     /**
      * Mensaje cuando se requiere login
